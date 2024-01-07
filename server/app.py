@@ -238,7 +238,7 @@ class Products(Resource):
             200
         )
         return response
-    #POST
+#POST
     def post(self):
         try: 
             data = request.get_json()
@@ -265,7 +265,7 @@ api.add_resource(Products, '/products')
 
 
 ################ PRODUCTSBYID ################
-    #GET
+#GET
 class ProductsByID(Resource):
     def get(self, id):
         product = Product.query.filter_by(id=id).first()
@@ -314,6 +314,8 @@ api.add_resource(ProductsByID, '/product/<int: id>')
 
             
 ################ PRODUCT CATEGORIES ################
+
+
     
 
 ################ INVENTORY ################
@@ -334,13 +336,9 @@ class Reviews(Resource):
             data = request.get_json()
             print (data)
             review = Review(
-                review = db.Column(db.String, nullable=False)
-                rating = db.Column(db.Integer, nullable=False)
-                review_img = db.Column(db.LargeBinary, nullable=False)
-                review_name=data["review_name"],
-                review_description=data["review_description"],
-                review_img=data["review_img"],
-                review_price=data["review_price"],
+                review = data["review"],
+                rating = data["rating"],
+                review_img = data["review_img"],
             )
             db.session.add(review)
             db.session.commit()
@@ -349,7 +347,7 @@ class Reviews(Resource):
                 "errors": [e.__str__()]
             }, 422)
         response = make_response(
-            product.to_dict(),
+            review.to_dict(),
             201
         )
         return response
