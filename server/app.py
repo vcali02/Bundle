@@ -566,9 +566,9 @@ api.add_resource(ShopifyInfo, '/shopifyinfo')
 #GET
 class Payment(Resource):
     def get(self):
-        payment = [orderStatuss.to_dict() for orderStatuss in OrderStatus.query.all()]
+        payments = [payment.to_dict() for payment in Payment.query.all()]
         response = make_response(
-            orderStatus,
+            payments,
             200
         )
         return response
@@ -592,21 +592,58 @@ class Messages(Resource):
 
 #POST /messages
     def post(self):
+
         data=request.get_json()
+
         new_msg =Message(
-            content = db.Column(db.String)
-            read_by_buyer = db.Column(db.Boolean)
-            read_by_seller = data.get('read_by_seller')
-            attachments = data.get(['attachments'])
-            conversations=data.get('conversations')
+            content = data.get('content'),
+            read_by_buyer = data.get('read_by_buyer'),
+            read_by_seller = data.get('read_by_seller'),
+            attachments = data.get(['attachments']),
+            conversations=data.get('conversations'),
             )
+        db.session.add(new_msg)
+        db.session.commit()
+
+        new_msg_dict=new_msg.to_dict()
+
+        res=make_response(
+            new_msg_dict,
+            201
+        )
+        return res 
 
     
 api.add_resource(Messages, "/messages")
 
 #GET /messages/<int:id>
+class MessageById(Resource):
+    def get(self, id):
+        m= Message.query.filter_by(id=id).first()
+
+        if not m:
+            return {"error":"Message not found."}, 404
+        
+        m_dict=m.to_dict()
+
+        res=make_response(
+            m_dict,
+            200
+        )
+        return res
+    
 #PATCH /messages/<int:id>
+    
 #DELETE /messages/<int:id>
+    def delete(self, id):
+        m=Message.query.filter_by(id=id).first()
+        if not m:
+            return {"error":"Message not found."}, 404
+        db.session.delete(m)
+        db.session.commit()
+        return make_response({}, 204)
+
+api.add_resource(MessageById, "/messages/<int:id>")
     
 
 ################ ORDER HISTORY ################
@@ -618,7 +655,7 @@ api.add_resource(Messages, "/messages")
 ################ ADDRESS ################
 
 #GET /addresses
-class Addresses(Resouce):
+class Addresses(Resource):
     def get(self):
         #1 query
         ads=Address.query.all()
