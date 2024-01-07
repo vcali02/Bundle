@@ -487,7 +487,41 @@ class Orders(Resource):
         return response
 api.add_resource(Orders, '/orders')
 ################ ORDERSBYID ################
-    
+    #GET
+class OrderByID(Resource):
+    def get(self, id):
+        order = Order.query.filter_by(id=id).first()
+        if not order:
+            abort(404, "order not found")
+        order_dict = order.to_dict()
+        response = make_response(
+            order_dict,
+            200
+        )
+        return response
+    #PATCH
+    def patch(self, id):
+        order = Order.query.filter_by(id=id).first()
+        if not order:
+            return make_response({'error': 'order not found'}, 404)
+        data= request.get_json()
+        for attr in data:
+            setattr(order, attr, data[attr])
+        db.session.add(order)
+        db.session.commit()
+
+        return make_response(order.to_dict(), 202)
+    #DELETE
+    def delete(self, id):
+    order = Order.query.filter_by(id=id).first()
+    if not order:
+        make_response(
+            {"error": "order not found"},
+            404
+        )
+    db.session.delete(order)
+    db.session.commit()
+api.add_resource(OrderByID, '/order/<int:id>')
 
 ################ ORDER ITEMS ################
     
@@ -508,6 +542,97 @@ api.add_resource(Orders, '/orders')
     
 
 ################ ADDRESS ################
+
+#GET /addresses
+class Addresses(Resouce):
+    def get(self):
+        #1 query
+        ads=Address.query.all()
+        #2 dict
+        ads_dict=[ads.to_dict() for ad in ads]
+        #res
+        res=make_response(
+            ads_dict,
+            200
+        )
+        return res 
+
+#POST /addresses
+    def post(self):
+        #1 set data as JSON
+        data=request.get_json()
+        #2 create instance
+        new_ad = Business(
+            address_line_one=data.get('address_line_one'),
+            address_line_two=data.get('address_line_two'),
+            city=data.get('city'),
+            state=data.get('state'),
+            postal_code=data.get('postal_code'),
+            address_type=data.get('address_type'),
+        )
+        #3 add/commit to database
+        db.session.add(new_ad)
+        db.session.commit()
+
+        #4 dict aka res into JSON obj
+        new_ad_dict=new_ad.to_dict()
+
+        #5 res
+        res=make_response(
+            new_ad_dict,
+            201
+        )
+        #6 return res
+        return res
+
+
+api.add_resource(Addresses, "/addresses")
+
+#GET /addresses/<int:id>
+class AddressById(Resource):
+    def get(self, id):
+        #1 query
+        ad=Address.query.filter_by(id=id).first()
+        if not ad:
+            return {"error": "Address not found."}, 404
+        #2 dict
+        ad_dict = ad.to_dict()
+        #res
+        res=make_response(
+            ad_dict,
+            200
+        )
+        return res
+
+
+#PATCH /addresses/<int:id>
+    def patch(self, id):
+        ad=Address.query.filter_by(id=id).first()
+        data=request.to_json()
+        if not ad:
+            return make_response({'error': 'address not found'},
+            404
+            )
+        data = request.get_json()
+        for attr in data:
+            setattr(ad, attr, data[attr])
+        db.session.add(ad)
+        db.session.db.session.commit()
+                
+        return make_response(ad.to_dict(), 202)
+
+#DELETE /addresses/<int:id>
+    def delete(self, id):
+        ad=Address.query.filter_by(id=id).first()
+        if not ad:
+            return {"error": "Address not found."}, 404
+        db.session.delete(ad)
+        db.session.commit()
+        return make_response({}, 204)
+    
+api.add_resource(AddressById, "/addresses/<int:id>")
+
+
     
 
  
