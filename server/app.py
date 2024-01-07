@@ -315,8 +315,86 @@ api.add_resource(ProductsByID, '/product/<int: id>')
             
 ################ PRODUCT CATEGORIES ################
 
-
+#GET /product_categories
+class ProductCategories(Resource):
+    def get(self):
+        #1 query
+        pcs=ProductCategory.query.all()
+        if not pcs:
+            return {"error": "Product Category not found."}, 404
+        #2 dict
+        pcs_dict=[pc.to_dict for pc in pcs]
+        #3 res
+        res=make_response(
+            pcs_dict,
+            200
+        )
+        return res
     
+
+#POST /product_categories
+    def post(self):
+        #1 set data as JSON
+        data =request.get_json()
+        #2 create instance
+        new_product = ProductCategory(
+            category_name=data.get(['product_category'])
+        )
+        #add/commit to db
+        db.session.add(new_product)
+        db.session.commit()
+
+        #4 dict aka res into JSON obj
+        new_product_dict=new_product.to_dict()
+
+        #5 res
+        res=make_response(
+            new_product_dict,
+            201
+        )
+        #6 return res
+        return res
+
+
+api.add_resource(ProductCategories, "/product_categories")
+
+#GET /product_categories/<int:id>
+class ProductCategoryById(Resource):
+    def get(self, id):
+        #1 query
+        one_pc=ProductCategory.query.filter_by(id=id).first()
+        if not one_pc:
+            return {"error": "Product Category not found."}, 404
+        #2 dict
+        one_pc_dict= one_pc.to_dict()
+        #res
+        res=make_response(
+            one_pc_dict,
+            200
+        )
+        return res
+ 
+#DO WE NEED PATCH FOR THIS MODEL??   
+#PATCH /product_categories/<int:id>
+    # def patch(self, id):
+    #     #1 query
+    #     #2 data to JSON
+    #     #3 edit
+    #     #add/commit to db
+    #     #return res
+
+
+#DELETE /product_categories/<int:id>
+    def delete(self, id):
+        #1 query
+        pc=ProductCategory.query.filter_by(id=id).first()
+        if not pc:
+            return {'error': "Product Category not found."}, 404
+        #delete/commit from/to db
+        db.session.delete(pc)
+        db.session.commit()
+        #return res
+        return make_response({}, 204)
 
 ################ INVENTORY ################
     
@@ -396,9 +474,19 @@ api.add_resource(ReviewsByID, '/review/<int: id>')
     
 
 ################ SALE HISTORY ################
-    
 
 ################ ORDERS ################
+    #GET
+class Orders(Resource):
+    def get(self):
+        orders = [order.to_dict() for order in User.query.all()]
+        response = make_response(
+            orders,
+            200
+        )
+        return response
+api.add_resource(Orders, '/orders')
+################ ORDERSBYID ################
     
 
 ################ ORDER ITEMS ################
