@@ -75,10 +75,61 @@ class Businesses(Resource):
         )
         #6 return res
         return res
-
-
-#4 route
+#add route
 api.add_resource(Businesses, "/businesses")
+
+
+#GET /businesses/<int:id>
+class OneBusiness(Resource):
+    def get(self, id):
+        #1 query
+        one_bs = Business.query.filter_by(id=id).first()
+        if not one_bs:
+            return {"error": "Business not found."}, 404
+        #2 dict aka res into JSON obj
+        one_bs_dict = one_bs.to_dict()
+        res = make_response(
+            one_bs_dict,
+            200
+        )
+        return res
+    
+#PATCH /businesses/<int:id>
+    
+    def patch(self, id):
+        #1 query by id
+        bis= Business.query.filter_by(id=id).first()
+
+        #2 get data from request in JSON format
+        data= request.get_json()
+
+
+        #3 update values in the model
+        for attr in data:
+            setattr(bis, attr, data.get(attr))
+
+        #4 update the database
+        db.session.add(bis)
+        db.session.commit()
+
+        #5 return res
+        return make_response(bis.to_dict(), 200)
+    
+#DELETE /businesses/<int:id>
+    def delete(self, id):
+        #1 get by id
+        one_bs= Business.query.filter_by(id=id).first()
+        if not one_bs:
+            return {"error": "Business not found."}, 404
+        #2 delete from database
+        db.session.delete(one_bs)
+        db.session.commit()
+
+        return make_response({}, 204)
+
+
+#add route
+api.add_resource(OneBusiness, "/businesses/<int:id>")
     
 
 ################ BUSINESS CATEGORIES ################
