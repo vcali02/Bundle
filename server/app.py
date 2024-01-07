@@ -51,7 +51,7 @@ class Businesses(Resource):
     
 #POST /businesses
     def post(self):
-        #1. set data as JSON
+        #1 set data as JSON
         data=request.get_json()
         #2 create instance
         new_bis = Business(
@@ -80,7 +80,7 @@ api.add_resource(Businesses, "/businesses")
 
 
 #GET /businesses/<int:id>
-class OneBusiness(Resource):
+class BusinessById(Resource):
     def get(self, id):
         #1 query
         one_bs = Business.query.filter_by(id=id).first()
@@ -129,18 +129,163 @@ class OneBusiness(Resource):
 
 
 #add route
-api.add_resource(OneBusiness, "/businesses/<int:id>")
+api.add_resource(BusinessById, "/businesses/<int:id>")
     
 
 ################ BUSINESS CATEGORIES ################
+
+#GET /business_categories
+class BusinessCategories(Resource):
+    def get(self):
+        #1 query
+        bcs=Business.query.all()
+        if not bcs:
+            return {"error": "Business not found."}, 404
+        #2 turn to JSON w dict
+        bcs_dict=[bc.to_dict() for bc in bcs]
+        #3 res
+        res= make_response(
+            bcs_dict,
+            200
+        )
+        return res
+    
+#POST /business_categories
+    def post(self):
+        #1 set data as JSON
+        data=request.get_json()
+        #2 create instance
+        new_bis_cat=BusinessCategory(
+            category_name=data.get('cat')
+        )
+        #3 add to db
+        db.session.add(new_bis_cat)
+        db.session.commit()
+
+        #4 dict aka res into JSON obj
+        new_bis_cat_dict=new_bis_cat.to_dict()
+
+        #5 res to JSON obj
+        res= make_response(
+             new_bis_cat_dict,
+             201
+        )
+        return res 
+        
+#add route
+api.add_resource(BusinessCategories, "/business_categories")
+
+
+#GET /business_categories/<int:id>
+class BusinessCategoryById(Resource):
+    def get(self, id):
+        one_bc=BusinessCategory.query.filter_by(id=id).first()
+        if not one_bc:
+            return {"error": "Business Category not found."}, 404
+        one_bc_dict= one_bc.to_dict()
+        res= make_response(
+            one_bc_dict,
+            200
+        )
+
+#PATCH /business_categories/<int:id>
+        
+    def patch(self, id):
+        
+
+#DELETE /business_categories/<int:id>
+        
+api.add_resource(BusinessCategoryById, "/business_categories/<int:id>")
+        
+
     
 
 ################ PRODUCTS ################
+
+#GET
+class Products(Resource):
+    def get(self):
+        products = [product.to_dict() for product in Product.query.all()]
+        response = make_response(
+            products,
+            200
+        )
+        return response
+    #POST
+    def post(self):
+        try: 
+            data = request.get_json()
+            print (data)
+            product = Product(
+                product_name=data["product_name"],
+                product_description=data["product_description"],
+                product_img=data["product_img"],
+                product_price=data["product_price"],
+            )
+            db.session.add(product)
+            db.session.commit()
+        except Exception as e:
+            return make_response({
+                "errors": [e.__str__()]
+            }, 422)
+        response = make_response(
+            product.to_dict(),
+            201
+        )
+        return response
+api.add_resource(Products, '/products')
+
+
+
+################ PRODUCTSBYID ################
+    #GET
+class ProductsByID(Resource):
+    def get(self, id):
+        product = Product.query.filter_by(id=id).first()
+        if not product:
+            abort(404, "Product not found")
+        product_dict = product.to_dict()
+        response = make_response(
+            product_dict,
+            200
+        )
+        return response
+    #POST
+    #PATCH
+    def patch(self, id):
+        product = Product.query.filter_by(id=id).first()
+        if not product:
+            return make_response({'error': 'product not found'},
+            404
+            )
+        data = request.get_json()
+        for attr in data:
+            setattr(product, attr, data[attr])
+        db.session.add(product)
+        db.session.db.session.commit()
+                
+        return make_response(product.to_dict(), 202)
+
+    #DELETE
+    def delete(self, id):
+        product = Product.query.filter_by(id=id).first()
+        if not product:
+            make_response(
+                {"error": "product not foun"},
+                404
+            )
+        db.session.delete(product)
+        db.session.commit()
+api.add_resource(ProductsByID, '/product/<int: id>')            
+
+
+            
+
+######### ATTRIBUTES ################
     
 
-################ ATTRIBUTES ################
-    
 
+            
 ################ PRODUCT CATEGORIES ################
     
 
@@ -148,6 +293,8 @@ api.add_resource(OneBusiness, "/businesses/<int:id>")
     
 
 ################ REVIEWS ################
+
+################ REVIEWSBYID ################
     
 
 ################ SALE HISTORY ################
