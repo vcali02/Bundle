@@ -136,8 +136,7 @@ class BusinessCategory(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    # FOREIGN KEY
-    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
+   
 
     category_name = db.Column(db.String)
 
@@ -404,7 +403,7 @@ class Order_Item(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-    
+
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
     quantity = db.Column(db.Integer, nullable=False)
@@ -467,6 +466,7 @@ class Message(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    
     content = db.Column(db.String)
     read_by_buyer = db.Column(db.Boolean)
     read_by_seller = db.Column(db.Boolean)

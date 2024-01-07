@@ -470,7 +470,7 @@ class ReviewsByID(Resource):
             )
         db.session.delete(review)
         db.session.commit()
-api.add_resource(ReviewsByID, '/review/<int: id>')     
+api.add_resource(ReviewsByID, '/review/<int:id>')     
     
 
 ################ SALE HISTORY ################
@@ -524,16 +524,56 @@ class OrderByID(Resource):
 api.add_resource(OrderByID, '/order/<int:id>')
 
 ################ ORDER ITEMS ################
-    
+#GET
+class OrderItems(Resource):
+    def get(self):
+        orderItems = [orderItem.to_dict() for orderItem in OrderItem.query.all()]
+        response = make_response(
+            orderItems,
+            200
+        )
+        return response
+        
+api.add_resource(OrderItems, '/orderitems')
 
 ################ ORDER STATUS ################
-    
+#GET
+class OrderStatus(Resource):
+    def get(self):
+        orderStatus = [orderStatuss.to_dict() for orderStatuss in OrderStatus.query.all()]
+        response = make_response(
+            orderStatus,
+            200
+        )
+        return response
+        
+api.add_resource(OrderItems, '/orderitems')
 
 ################ SHOPIFY INFO ################
-    
+#GET
+class ShopifyInfo(Resource):
+    def get(self):
+        shopifyInfo = [shopifyInfos.to_dict() for shopifyInfos in ShopifyInfo.query.all()]
+        response = make_response(
+            shopifyInfo,
+            200
+        )
+        return response
+        
+api.add_resource(ShopifyInfo, '/shopifyinfo')
 
 ################ PAYMENT ################
-    
+#GET
+class Payment(Resource):
+    def get(self):
+        payment = [orderStatuss.to_dict() for orderStatuss in OrderStatus.query.all()]
+        response = make_response(
+            orderStatus,
+            200
+        )
+        return response
+        
+api.add_resource(Payment, '/payment')
 
 ################ MESSAGING ################
 
@@ -541,7 +581,28 @@ api.add_resource(OrderByID, '/order/<int:id>')
 class Messages(Resource):
     def get(self):
         ms=Message.query.all()
+        if not ms:
+            return {"error": "Message not found."}, 404
+        ms_dict=[m.to_dict() for m in ms]
+        res=make_response(
+            ms_dict,
+            200
+        )
+        return res 
+
 #POST /messages
+    def post(self):
+        data=request.get_json()
+        new_msg =Message(
+            content = db.Column(db.String)
+            read_by_buyer = db.Column(db.Boolean)
+            read_by_seller = data.get('read_by_seller')
+            attachments = data.get(['attachments'])
+            conversations=data.get('conversations')
+            )
+
+    
+api.add_resource(Messages, "/messages")
 
 #GET /messages/<int:id>
 #PATCH /messages/<int:id>
