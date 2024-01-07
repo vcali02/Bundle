@@ -191,9 +191,36 @@ class BusinessCategoryById(Resource):
 #PATCH /business_categories/<int:id>
         
     def patch(self, id):
+        #1 query by id
+        bc= BusinessCategory.query.filter_by(id=id).first()
+
+        #2 get data from request in JSON format
+        data= request.get_json()
+
+
+        #3 update values in the model
+        for attr in data:
+            setattr(bc, attr, data.get(attr))
+
+        #4 update the database
+        db.session.add(bc)
+        db.session.commit()
+
+        #5 return res
+        return make_response(bc.to_dict(), 200)
         
 
 #DELETE /business_categories/<int:id>
+    def delete(self, id):
+        #1 get by id
+        one_bc= BusinessCategory.query.filter_by(id=id).first()
+        if not one_bc:
+            return {"error": "Business not found."}, 404
+        #2 delete from database
+        db.session.delete(one_bc)
+        db.session.commit()
+
+        return make_response({}, 204)
         
 api.add_resource(BusinessCategoryById, "/business_categories/<int:id>")
         
@@ -293,8 +320,81 @@ api.add_resource(ProductsByID, '/product/<int: id>')
     
 
 ################ REVIEWS ################
-
+class Reviews(Resource):
+    def get(self):
+        reviews = [review.to_dict() for review in Product.query.all()]
+        response = make_response(
+            reviews,
+            200
+        )
+        return response
+    #POST
+    def post(self):
+        try: 
+            data = request.get_json()
+            print (data)
+            review = Review(
+                review = db.Column(db.String, nullable=False)
+                rating = db.Column(db.Integer, nullable=False)
+                review_img = db.Column(db.LargeBinary, nullable=False)
+                review_name=data["review_name"],
+                review_description=data["review_description"],
+                review_img=data["review_img"],
+                review_price=data["review_price"],
+            )
+            db.session.add(review)
+            db.session.commit()
+        except Exception as e:
+            return make_response({
+                "errors": [e.__str__()]
+            }, 422)
+        response = make_response(
+            product.to_dict(),
+            201
+        )
+        return response
+api.add_resource(Reviews, '/review')
 ################ REVIEWSBYID ################
+
+    #GET
+class ReviewsByID(Resource):
+    def get(self, id):
+        review = Review.query.filter_by(id=id).first()
+        if not review:
+            abort(404, "Review not found")
+        review_dict = review.to_dict()
+        response = make_response(
+            review_dict,
+            200
+        )
+        return response
+    #POST
+    #PATCH
+    def patch(self, id):
+        review = Review.query.filter_by(id=id).first()
+        if not review:
+            return make_response({'error': 'review not found'},
+            404
+            )
+        data = request.get_json()
+        for attr in data:
+            setattr(review, attr, data[attr])
+        db.session.add(review)
+        db.session.db.session.commit()
+                
+        return make_response(review.to_dict(), 202)
+
+    #DELETE
+    def delete(self, id):
+        review = Review.query.filter_by(id=id).first()
+        if not review:
+            make_response(
+                {"error": "review not found"},
+                404
+            )
+        db.session.delete(review)
+        db.session.commit()
+api.add_resource(ReviewsByID, '/review/<int: id>')     
     
 
 ################ SALE HISTORY ################
