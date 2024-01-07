@@ -12,7 +12,7 @@ from datetime import datetime
 
 ############### Models ##############
 
-############ SELLER -Val ############
+############ SELLER ############
 
 class Seller(db.Model, SerializerMixin, UserMixin):
     __tablename__ = "sellers"
@@ -84,7 +84,7 @@ class Seller(db.Model, SerializerMixin, UserMixin):
         return value
 
 
-############ BUSINESS -Val ############
+############ BUSINESS ############
 
 class Business(db.Model, SerializerMixin):
     __tablename__ = "businesses"
@@ -127,7 +127,7 @@ class Business(db.Model, SerializerMixin):
     serialize_rules = ('-seller', '-business_category', 'business_products')
 
 
-############ BUSINESS CATEGORIES -Val ############
+############ BUSINESS CATEGORIES ############
 
 class BusinessCategory(db.Model, SerializerMixin):
     __tablename__ = "business_categories"
@@ -154,7 +154,7 @@ class BusinessCategory(db.Model, SerializerMixin):
     serialize_rules = ('-category', )
 
 
-################# PRODUCTS - Steve ##################
+################# PRODUCTS ##################
 
 class Product(db.Model, SerializerMixin):
     __tablename__ = "products"
