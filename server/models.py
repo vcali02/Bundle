@@ -27,7 +27,7 @@ class Seller(db.Model, SerializerMixin, UserMixin):
     seller_email = db.Column(db.String, unique=True)
     seller_username = db.Column(db.String, unique=True)
     seller_password = db.Column(db.String)
-    seller_img = db.Column(db.String)
+    seller_img = db.Column(db.LargeBinary)
 
     # RELATIONSHIP
 
@@ -93,9 +93,8 @@ class Business(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    bis_category_id = db.Column(db.Integer)
-    seller_id = db.Column(db.Integer)
-    product_id = db.Column(db.Integer)
+    bis_category_id = db.Column(db.Integer, db.ForeignKey('business_categories.id'))
+    seller_id = db.Column(db.Integer, db.ForeignKey('sellers.id'))
 
     business_name = db.Column(db.String, unique=True)
     business_address = db.Column(db.String)
@@ -137,8 +136,6 @@ class BusinessCategory(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     # FOREIGN KEY
-    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
-
     category_name = db.Column(db.String)
 
     # RELATIONSHIP
@@ -242,9 +239,6 @@ class ProductCategory(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-
-    # FOREIGN KEY
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"))
 
     # array to allow front end category selection
     category_name = db.Column(db.ARRAY(db.String))
