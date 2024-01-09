@@ -304,6 +304,7 @@ class ProductsByID(Resource):
         db.session.delete(product)
         db.session.commit()
 api.add_resource(ProductsByID, '/product/<int:id>')            
+api.add_resource(ProductsByID, '/product/<int:id>')            
 
 
             
@@ -471,6 +472,7 @@ class ReviewsByID(Resource):
         db.session.delete(review)
         db.session.commit()
 api.add_resource(ReviewsByID, '/review/<int:id>')     
+api.add_resource(ReviewsByID, '/review/<int:id>')     
     
 
 ################ SALE HISTORY ################
@@ -513,6 +515,15 @@ class OrderByID(Resource):
         return make_response(order.to_dict(), 202)
     #DELETE
     def delete(self, id):
+        order = Order.query.filter_by(id=id).first()
+        if not order:
+            make_response(
+                {"error": "order not found"},
+                404
+            )
+        db.session.delete(order)
+        db.session.commit()
+
         order = Order.query.filter_by(id=id).first()
         if not order:
             make_response(
@@ -655,6 +666,7 @@ api.add_resource(MessageById, "/messages/<int:id>")
 ################ ADDRESS ################
 
 #GET /addresses
+class Addresses(Resource):
 class Addresses(Resource):
     def get(self):
         #1 query
