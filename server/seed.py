@@ -90,9 +90,10 @@ def seed_product():
     images_directory = 'images'
     try:
         for filename in os.listdir(images_directory):
-            if filename.endswith((".jpg", ".jpeg", ".png")) and filename not in ("illustration.png", "blank-profile-picture.png", "chocowoco.png"):
+            if filename.endswith((".jpg", ".jpeg", ".png")) and filename not in ("illustration.png", "blank-profile-picture-973460_960_720.png", "chocowoco.png"):
+                print(f"Processing image: {filename}")
                 image_path = os.path.join(images_directory, filename)
-                product_name = os.path.splittext(filename)[0].replace('-', ' ').title()
+                product_name = os.path.splitext(filename)[0].replace('-', ' ').title()
                 product_price= 6.00
                 with open(image_path, 'rb') as image_file:
                     image_data = image_file.read()
@@ -113,31 +114,44 @@ def seed_inventory():
     try:
         products = Product.query.all()
         for product in products:
-            inventory = Inventory(
-                product_id=product.id,
-                product_quantity=100
-            )
-            product.product_inventory.append(inventory)
+            for attribute in product.product_attributes:
+                inventory = Inventory(
+                    product_id=product.id,
+                    product_quantity=100,
+                    attribute_id=attribute.id,
+                )
+                product.product_inventory.append(inventory)
         db.session.commit()
     except Exception as e:
         print(f'Error: {e}')
 
 def seed_attributes():
     chocolate_types = {
-    "milk chocolate": [1, 5, 6],
-    "dark chocolate": [2, 4], 
-    "white chocolate": [3]
+    "milk chocolate": [5, 6, 7],
+    "dark chocolate": [1, 4], 
+    "white chocolate": [2]
     }
     for chocolate_type, product_ids in chocolate_types.items():
         for product_id in product_ids:
+            print(f'for product {product_id}')
             product = Product.query.get(product_id)
+            print(chocolate_type)
             new_attribute = Attribute(
                 product_id = product_id,
-                attribute_name=[chocolate_type]
+                attribute_name=[chocolate_type],
                 )
+            print(product)
+            print(new_attribute)
             product.product_attributes.append(new_attribute)
         db.session.commit()
 
 if __name__ == '__main__':
     with app.app_context():
-        seed_business_category()
+        # seed_business_category()
+        # seed_product_category()
+        # seed_test_seller()
+        # seed_business()
+        # seed_product()
+        # seed_inventory()
+        # seed_attributes()
+        pass

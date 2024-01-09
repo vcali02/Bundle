@@ -21,8 +21,6 @@ class Seller(db.Model, SerializerMixin, UserMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
-
     seller_name = db.Column(db.String)
     seller_email = db.Column(db.String, unique=True)
     seller_username = db.Column(db.String, unique=True)
@@ -119,6 +117,8 @@ class Business(db.Model, SerializerMixin):
         "Product", back_populates="business"
     )
 
+    sale_histories = db.relationship("SaleHistory", back_populates='business')
+
     # VALIDATION
 
     # SERIALIZE RULES
@@ -163,7 +163,7 @@ class Product(db.Model, SerializerMixin):
     product_description = db.Column(db.String, nullable=False)
     product_img = db.Column(db.LargeBinary, nullable=False)
     product_price = db.Column(db.Float, nullable=False)
-
+    product_category_id = db.Column(db.Integer, db.ForeignKey('product_categories.id'))
     # FOREIGN KEY
     seller_id = db.Column(db.Integer, db.ForeignKey("sellers.id"))
     business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
@@ -195,10 +195,7 @@ class Product(db.Model, SerializerMixin):
         "Review", back_populates="product"
     )
 
-    # one buyer has many purchased products; many products are purchased by one buyer
-    buyer = db.relationship(
-        "Buyer", back_populates="purchased_products"
-    )
+    order_items = db.relationship('Order_Item', back_populates="product")
 
     # SERIALIZE RULES
 
@@ -264,8 +261,8 @@ class Inventory(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-    product_quntity = db.Column(db.Integer, nullable=False)
-
+    product_quantity = db.Column(db.Integer, nullable=False)
+    attribute_id = db.Column(db.Integer, db.ForeignKey('attributes.id'))
     # FOREIGN KEYS
     product_id = db.Column(db.Integer, db.ForeignKey("products.id"))
 
@@ -301,7 +298,7 @@ class Review(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
     review = db.Column(db.String, nullable=False)
     rating = db.Column(db.Integer, nullable=False)
-    review_img = db.Column(db.LargeBinary, nullable=False)
+    review_img = db.Column(db.LargeBinary, nullable=True)
 
     # FOREIGN KEY
 
@@ -347,14 +344,16 @@ class SaleHistory(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     # FOREIGN KEY
-    seller_id = db.Column(db.Integer, db.ForeignKey("sellers.id"))
-
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
     # RELATIONSHIP
 
     # one sale belongs to one order; one order belongs to one sale
     order = db.relationship(
         "Order", back_populates="sale_history"
     )
+
+    business = db.relationship("Business", back_populates='sale_histories')
 
     # SERIALIZE RULES
 
@@ -384,7 +383,7 @@ class Order(db.Model, SerializerMixin):
     # many order items belong to one order; one order owns many order items
     # order_items relationship
     order_items = db.relationship(
-        'OrderItems', back_populates='order', cascade='all, delete-orphan')
+        'Order_Item', back_populates='order', cascade='all, delete-orphan')
 
     status = db.relationship('Order_Status', backref='orders')
 
@@ -504,7 +503,7 @@ class Address(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-
+    buyer_id = db.Column(db.Integer, db.ForeignKey('buyers.id'))
     address_line_one = db.Column(db.String, nullable=False)
     address_line_two = db.Column(db.String, nullable=True)
     city = db.Column(db.String, nullable=False)
@@ -559,8 +558,7 @@ class Buyer(db.Model, SerializerMixin, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
-    reviews_id = db.Column(db.Integer, db.ForeignKey('reviews.id'))
+
     buyer_name = db.Column(db.String, nullable=False)
     buyer_email = db.Column(db.String, nullable=False)
     buyer_username = db.Column(db.String, nullable=False)
@@ -570,11 +568,6 @@ class Buyer(db.Model, SerializerMixin, UserMixin):
     # RELATIONSHIP
     addresses = db.relationship(
         "Address", back_populates="buyer", cascade="all, delete-orphan")
-
-    # one buyer has many purchased products; many products are purchased by one buyer
-    purchased_products = db.relationship(
-        "Product", back_populates="buyer"
-    )
 
     # association proxy
     # one buyer has products through purchased products
