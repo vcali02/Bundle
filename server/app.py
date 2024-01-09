@@ -304,6 +304,7 @@ class ProductsByID(Resource):
         db.session.delete(product)
         db.session.commit()
 api.add_resource(ProductsByID, '/product/<int:id>')            
+api.add_resource(ProductsByID, '/product/<int:id>')            
 
 
             
@@ -471,6 +472,7 @@ class ReviewsByID(Resource):
         db.session.delete(review)
         db.session.commit()
 api.add_resource(ReviewsByID, '/review/<int:id>')     
+api.add_resource(ReviewsByID, '/review/<int:id>')     
     
 
 ################ SALE HISTORY ################
@@ -522,29 +524,149 @@ class OrderByID(Resource):
         db.session.delete(order)
         db.session.commit()
 
+        order = Order.query.filter_by(id=id).first()
+        if not order:
+            make_response(
+                {"error": "order not found"},
+                404
+            )
+        db.session.delete(order)
+        db.session.commit()
 api.add_resource(OrderByID, '/order/<int:id>')
 
 ################ ORDER ITEMS ################
-    
+#GET
+class OrderItems(Resource):
+    def get(self):
+        orderItems = [orderItem.to_dict() for orderItem in OrderItem.query.all()]
+        response = make_response(
+            orderItems,
+            200
+        )
+        return response
+        
+api.add_resource(OrderItems, '/orderitems')
 
 ################ ORDER STATUS ################
-    
+#GET
+class OrderStatus(Resource):
+    def get(self):
+        orderStatus = [orderStatuss.to_dict() for orderStatuss in OrderStatus.query.all()]
+        response = make_response(
+            orderStatus,
+            200
+        )
+        return response
+        
+api.add_resource(OrderItems, '/orderitems')
 
 ################ SHOPIFY INFO ################
-    
+#GET
+class ShopifyInfo(Resource):
+    def get(self):
+        shopifyInfo = [shopifyInfos.to_dict() for shopifyInfos in ShopifyInfo.query.all()]
+        response = make_response(
+            shopifyInfo,
+            200
+        )
+        return response
+        
+api.add_resource(ShopifyInfo, '/shopifyinfo')
 
 ################ PAYMENT ################
-    
+#GET
+class Payment(Resource):
+    def get(self):
+        payments = [payment.to_dict() for payment in Payment.query.all()]
+        response = make_response(
+            payments,
+            200
+        )
+        return response
+        
+api.add_resource(Payment, '/payment')
 
 ################ MESSAGING ################
+
+#GET /messages
+class Messages(Resource):
+    def get(self):
+        ms=Message.query.all()
+        if not ms:
+            return {"error": "Message not found."}, 404
+        ms_dict=[m.to_dict() for m in ms]
+        res=make_response(
+            ms_dict,
+            200
+        )
+        return res 
+
+#POST /messages
+    def post(self):
+
+        data=request.get_json()
+
+        new_msg =Message(
+            content = data.get('content'),
+            read_by_buyer = data.get('read_by_buyer'),
+            read_by_seller = data.get('read_by_seller'),
+            attachments = data.get(['attachments']),
+            conversations=data.get('conversations'),
+            )
+        db.session.add(new_msg)
+        db.session.commit()
+
+        new_msg_dict=new_msg.to_dict()
+
+        res=make_response(
+            new_msg_dict,
+            201
+        )
+        return res 
+
+    
+api.add_resource(Messages, "/messages")
+
+#GET /messages/<int:id>
+class MessageById(Resource):
+    def get(self, id):
+        m= Message.query.filter_by(id=id).first()
+
+        if not m:
+            return {"error":"Message not found."}, 404
+        
+        m_dict=m.to_dict()
+
+        res=make_response(
+            m_dict,
+            200
+        )
+        return res
+    
+#PATCH /messages/<int:id>
+    
+#DELETE /messages/<int:id>
+    def delete(self, id):
+        m=Message.query.filter_by(id=id).first()
+        if not m:
+            return {"error":"Message not found."}, 404
+        db.session.delete(m)
+        db.session.commit()
+        return make_response({}, 204)
+
+api.add_resource(MessageById, "/messages/<int:id>")
     
 
 ################ ORDER HISTORY ################
+#list of all
+#see one
+#
     
 
 ################ ADDRESS ################
 
 #GET /addresses
+class Addresses(Resource):
 class Addresses(Resource):
     def get(self):
         #1 query
