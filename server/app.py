@@ -667,7 +667,6 @@ api.add_resource(MessageById, "/messages/<int:id>")
 
 #GET /addresses
 class Addresses(Resource):
-class Addresses(Resource):
     def get(self):
         #1 query
         ads=Address.query.all()
