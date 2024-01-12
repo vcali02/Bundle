@@ -26,6 +26,7 @@ class Seller(db.Model, SerializerMixin, UserMixin):
     seller_username = db.Column(db.String, unique=True)
     seller_password = db.Column(db.String)
     seller_img = db.Column(db.LargeBinary)
+    shopify_integrated = db.Column(db.Boolean, default=False)
 
     # RELATIONSHIP
 
@@ -91,7 +92,8 @@ class Business(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    bis_category_id = db.Column(db.Integer, db.ForeignKey('business_categories.id'))
+    bis_category_id = db.Column(
+        db.Integer, db.ForeignKey('business_categories.id'))
     seller_id = db.Column(db.Integer, db.ForeignKey('sellers.id'))
 
     business_name = db.Column(db.String, unique=True)
@@ -163,7 +165,8 @@ class Product(db.Model, SerializerMixin):
     product_description = db.Column(db.String, nullable=False)
     product_img = db.Column(db.LargeBinary, nullable=False)
     product_price = db.Column(db.Float, nullable=False)
-    product_category_id = db.Column(db.Integer, db.ForeignKey('product_categories.id'))
+    product_category_id = db.Column(
+        db.Integer, db.ForeignKey('product_categories.id'))
     # FOREIGN KEY
     seller_id = db.Column(db.Integer, db.ForeignKey("sellers.id"))
     business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
@@ -460,16 +463,19 @@ class Message(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-    
+
     content = db.Column(db.String)
     read_by_buyer = db.Column(db.Boolean)
     read_by_seller = db.Column(db.Boolean)
     attachments = db.Column(db.ARRAY(db.LargeBinary))
-    conversations = db.Column(db.String)
 
     # FOREIGN KEYS
     seller_id = db.Column(db.Integer, db.ForeignKey("sellers.id"))
     buyer_id = db.Column(db.Integer, db.ForeignKey("buyers.id"))
+
+    recipients = db.relationship(
+        "MessageRecipient", back_populates="message", cascade="all, delete-orphan"
+    )
 
     # VALIDATION
 
@@ -481,12 +487,28 @@ class Message(db.Model, SerializerMixin):
 
     @validates('attachments')
     def validate_attachments(self, key, attachments):
-        if len(attachments) > 3:
-            raise ValueError("You cannot send more than 3 attachments.")
+        if attachments is not None:
+            if not isinstance(attachments, list):
+                raise ValueError("Attachments must be a list.")  # Ensure a list is provided
+            if len(attachments) > 3:
+                raise ValueError("You cannot send more than 3 attachments.")
         return attachments
 
 
+class MessageRecipient(db.Model):
+    __tablename__ = 'message_recipients'
+
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey("messages.id"))
+    user_type = db.Column(db.Enum("buyer", "seller", name="user_type_enum"))
+    buyer_id = db.Column(db.Integer, db.ForeignKey("buyers.id"))
+    seller_id = db.Column(db.Integer, db.ForeignKey("sellers.id"))
+
+    message = db.relationship("Message", back_populates="recipients")
+
 ################# ORDERHISTORY- COMPLETE ################
+
+
 class OrderHistory(db.Model, SerializerMixin):
     __tablename__ = "order_histories"
 
@@ -562,8 +584,8 @@ class Buyer(db.Model, SerializerMixin, UserMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     buyer_name = db.Column(db.String, nullable=False)
-    buyer_email = db.Column(db.String, nullable=False)
-    buyer_username = db.Column(db.String, nullable=False)
+    buyer_email = db.Column(db.String, nullable=False, unique=True)
+    buyer_username = db.Column(db.String, nullable=False, unique=True)
     buyer_password = db.Column(db.String, nullable=False)
     buyer_image = db.Column(db.LargeBinary)
 

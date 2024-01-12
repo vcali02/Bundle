@@ -1,11 +1,12 @@
 from app import app
-from models import db, Seller, Business, BusinessCategory, Product, Attribute, ProductCategory, Inventory, Review, SaleHistory, Order, Order_Item, Order_Status, ShopifyInfo, Payment, Message, OrderHistory, Address, Buyer 
+from models import db, Seller, Business, BusinessCategory, Product, Attribute, ProductCategory, Inventory, Review, SaleHistory, Order, Order_Item, Order_Status, ShopifyInfo, Payment, Message, MessageRecipient, OrderHistory, Address, Buyer 
 import pickle
 from flask_bcrypt import Bcrypt
 import random
 import ipdb
 import json
 import os
+import base64
 
 bcrypt= Bcrypt()
 
@@ -33,8 +34,9 @@ def seed_test_seller():
     image_path = os.path.join("images", "blank-profile-picture-973460_960_720.png")
     with open(image_path, "rb") as image_file:
         image_data = image_file.read()
+        encoded_image = base64.b64encode(image_data)
 
-    seller = [{'seller_name': 'Evan Roberts', 'seller_email': 'evanroberts@email.com', 'seller_username': 'EvanRoberts', 'seller_password': 'password', 'seller_img': image_data}]
+    seller = [{'seller_name': 'Evan Roberts', 'seller_email': 'evanroberts@email.com', 'seller_username': 'EvanRoberts', 'seller_password': 'password', 'seller_img': encoded_image}]
 
     for seller_data in seller:
         try:
@@ -56,18 +58,20 @@ def seed_business():
         image_path = os.path.join("images", "illustration.png")
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()
+            encoded_image = base64.b64encode(image_data)
 
         image_path_2 = os.path.join('images', 'chocowoco.png')
         with open(image_path_2, 'rb') as image_file_2:
             image_data_2 = image_file_2.read()
+            encoded_image_2 = base64.b64encode(image_data_2)
 
         business = [
             {
                 "bis_category_id":1,
                 'seller_id':1,
                 'business_name':'Chocotonic',
-                'business_img': image_data,
-                'business_banner_img': image_data_2,
+                'business_img': encoded_image,
+                'business_banner_img': encoded_image_2,
                 'business_desc': 'we sell chocolate :)'
             }
         ]
@@ -97,10 +101,11 @@ def seed_product():
                 product_price= 6.00
                 with open(image_path, 'rb') as image_file:
                     image_data = image_file.read()
+                    encoded_image = base64.b64encode(image_data)
                 new_product = Product(
                     product_name=product_name,
                     product_description='Yummy Chocolate',
-                    product_img=image_data,
+                    product_img=encoded_image,
                     product_price=product_price,
                     seller_id=1,
                     business_id=1
@@ -145,6 +150,133 @@ def seed_attributes():
             product.product_attributes.append(new_attribute)
         db.session.commit()
 
+def seed_address():
+    print('seed addresses')
+    try:
+        buyer = Buyer.query.first()
+
+        new_address = Address(
+            buyer_id = buyer.id,
+            address_line_one="123 Main St",
+            address_line_two="Apt 4B",
+            city="Anytown",
+            state="CA",
+            postal_code=95054,
+            address_type="shipping"
+        )
+        buyer.addresses.append(new_address)
+
+        db.session.commit()
+
+        print("Address seeded successfully!")
+    except Exception as e:
+        print(f"Error seeding address: {e}")
+        db.session.rollback()
+
+def seed_order_status():
+    print('seeding order status')
+    statuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned']
+
+    try:
+        for status in statuses:
+            new_status = Order_Status(name=status)
+            db.session.add(new_status)
+        db.session.commit()
+        print("Order statuses seeded successfully!")
+    except Exception as e:
+        print(f"Error seeding order statuses: {e}")
+        db.session.rollback()
+
+def seed_order():
+    print('seeding order')
+    try:
+        buyer = Buyer.query.first()
+
+        product = Product.query.first()
+
+        order = Order(buyer=buyer)
+
+        order_items = []
+        for product in product:
+            order_item = Order_Item(order=order, product=product, quantity=3, price=product.price)
+        
+        order.order_items.extend(order_items)
+
+        order.total_price = sum(item.price * item.quantity for item in order_items)
+
+        order.status = Order_Status.query.filter_by(name='Pending').first()
+
+        sale_history = SaleHistory(order=order, buiness=product.business_id)
+
+        db.session.add(order)
+        db.session.add(sale_history)
+        db.session.commit()
+    except Exception as e:
+        return f'{e}'
+
+def seed_reviews():
+    print('seeding reviews')
+    try:
+        products = Product.query.limit(3).all()
+        buyer = Buyer.query.first()
+
+        for product in products:
+            review_text = f"This is a review for {product.product_name}."
+            rating = random.randint(1, 5)
+
+            new_review = Review(
+                product_id=product.id,
+                buyer_id=buyer.id,
+                review=review_text,
+                rating=rating
+            )
+
+            db.session.add(new_review)
+
+        db.session.commit()
+
+        print("Reviews seeded successfully!")
+    except Exception as e:
+        print(f"Error seeding reviews: {e}")
+        db.session.rollback()
+
+def seed_messages():
+    print('seeding messages')
+    try:
+        buyer = Buyer.query.first()
+        seller = Seller.query.first()
+
+        message1 = Message(content="Hi, I'm interested in your product!", attachments=None)
+        message2 = Message(content="Great! What would you like to know?", attachments=None)
+        message3 = Message(content="Can you tell me more about it", attachments=None)
+
+        message1.recipients.append(
+        MessageRecipient(user_type="buyer", buyer_id=buyer.id)
+        )
+        message1.recipients.append(
+        MessageRecipient(user_type="seller", seller_id=seller.id)
+        )
+        message2.recipients.append(
+        MessageRecipient(user_type="seller", seller_id=seller.id)
+        )
+        message2.recipients.append(
+        MessageRecipient(user_type="buyer", buyer_id=buyer.id)
+        )
+        message3.recipients.append(
+        MessageRecipient(user_type="buyer", buyer_id=buyer.id)
+        )
+        message3.recipients.append(
+        MessageRecipient(user_type="seller", seller_id=seller.id)
+        )
+
+        db.session.add_all([message1, message2, message3])
+        db.session.commit()
+
+        print("Message exchanges seeded successfully!")
+    except Exception as e:
+        print(f"Error seeding messages: {e}")
+        db.session.rollback()
+
 if __name__ == '__main__':
     with app.app_context():
         # seed_business_category()
@@ -154,4 +286,9 @@ if __name__ == '__main__':
         # seed_product()
         # seed_inventory()
         # seed_attributes()
+        # seed_order_status()
+        # seed_address()
+        # seed_messages()
+        # seed_reviews()
+        # seed_order()
         pass
