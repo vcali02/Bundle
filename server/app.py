@@ -471,7 +471,83 @@ class ProductsByID(Resource):
 api.add_resource(ProductsByID, '/product/<int:id>')
 
 ######### ATTRIBUTES ################
-#POST AND DELETE
+#GET /attributes
+class Attributes(Resource):
+    def get(self):
+            # 1 query
+            ats = Attribute.query.all()
+            if not ats:
+                return {"error": "Business not found."}, 404
+            # 2 dict aka res into JSON obj
+            ats_dict = [at.to_dict(
+                only=("attribute_name", "product_id", "id",)
+            ) for at in ats]
+            # 3 res
+            res = make_response(
+                ats_dict,
+                200
+            )
+            return res
+
+# POST /attributes
+    def post(self):
+        # 1 set data as JSON
+        data = request.get_json()
+        # 2 create instance
+        new_at = Attribute(
+            attribute_name=data.get('attribute_name')
+        )
+        # 3 add/commit to database
+        db.session.add(new_at)
+        db.session.commit()
+
+        # 4 dict aka res into JSON obj
+        new_at_dict = new_at.to_dict()
+
+        # 5 res
+        res = make_response(
+            new_at_dict,
+            201
+        )
+        # 6 return res
+        return res
+
+
+# add route
+api.add_resource(Attributes, "/attributes")
+
+#GET /attributes/<int:id>
+class AttributeById(Resource):
+    def get(self, id):
+        # 1 query
+        one_at = Attribute.query.filter_by(id=id).first()
+        if not one_at:
+            return {"error": "Attribute not found."}, 404
+        # 2 dict aka res into JSON obj
+        one_at_dict = one_at.to_dict(
+            only=("attribute_name", "product_id", "id",)
+        )
+        res = make_response(
+            one_at_dict,
+            200
+        )
+        return res
+    
+# DELETE /attributes/<int:id>
+    def delete(self, id):
+        # 1 get by id
+        one_at = Attribute.query.filter_by(id=id).first()
+        if not one_at:
+            return {"error": "Attribute not found."}, 404
+        # 2 delete from database
+        db.session.delete(one_at)
+        db.session.commit()
+
+        return make_response({}, 204)
+
+
+# add route
+api.add_resource(AttributeById, "/attributes/<int:id>")
 
 ################ PRODUCT CATEGORIES ################
 

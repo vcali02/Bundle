@@ -204,6 +204,10 @@ class Product(db.Model, SerializerMixin):
     order_items = db.relationship('Order_Item', back_populates="product")
 
     # SERIALIZE RULES
+    serialize_rules=(
+        "-product_attributes",
+        "-product",
+    )
 
 
 ################# ATTRIBUTES #################
@@ -228,9 +232,15 @@ class Attribute(db.Model, SerializerMixin):
     )
 
     # one attribute belongs to one inventory; one inventory belongs to one attribute
-    inventories = db.relationship('Inventory', back_populates='attribute')
+    inventories = db.relationship(
+        'Inventory', back_populates='attribute'
+    )
 
     # VALIDATION
+    serialize_rules=(
+        "-product_attributes",
+        "-attribute",
+    )
 
     # SERIALIZER RULES
 
@@ -280,7 +290,9 @@ class Inventory(db.Model, SerializerMixin):
     )
 
     # one attribute belongs to one inventory; one inventory belongs to one attribute
-    attribute = db.relationship('Attribute', back_populates='inventories')
+    attribute = db.relationship(
+        'Attribute', back_populates='inventories'
+    )
 
     # VALIDATION
 
@@ -292,7 +304,9 @@ class Inventory(db.Model, SerializerMixin):
 
     # SERIALIZE RULES
 
-    serialize_rules = ('-product', 'attribute')
+    serialize_rules = (
+        '-product', 'attribute', "-inventories",
+        )
 
 
 ################# REVIEWS ##################
