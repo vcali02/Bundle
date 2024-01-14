@@ -885,6 +885,10 @@ class MessageById(Resource):
 
 api.add_resource(MessageById, "/messages/<int:id>")
 
+################ MESSAGE RECIPIENT ################
+
+
+
 
 ################ ORDER HISTORY ################
 # list of all
@@ -895,12 +899,13 @@ api.add_resource(MessageById, "/messages/<int:id>")
 ################ ADDRESS ################
 
 # GET /addresses
+#FUNCTIONALLY COMPLETE
 class Addresses(Resource):
     def get(self):
         # 1 query
         ads = Address.query.all()
         # 2 dict
-        ads_dict = [ads.to_dict() for ad in ads]
+        ads_dict = [ad.to_dict() for ad in ads]
         # res
         res = make_response(
             ads_dict,
@@ -913,7 +918,7 @@ class Addresses(Resource):
         # 1 set data as JSON
         data = request.get_json()
         # 2 create instance
-        new_ad = Business(
+        new_ad = Address(
             address_line_one=data.get('address_line_one'),
             address_line_two=data.get('address_line_two'),
             city=data.get('city'),
@@ -962,18 +967,17 @@ class AddressById(Resource):
 
     def patch(self, id):
         ad = Address.query.filter_by(id=id).first()
-        data = request.to_json()
-        if not ad:
-            return make_response({'error': 'address not found'},
-                                 404
-                                 )
         data = request.get_json()
+        if not ad:
+            return {'error': 'address not found'}, 404 
+        # data = request.get_json()
         for attr in data:
-            setattr(ad, attr, data[attr])
+            setattr(ad, attr, data.get(attr))
         db.session.add(ad)
-        db.session.db.session.commit()
+        db.session.commit()
 
         return make_response(ad.to_dict(), 202)
+    
 
 # DELETE /addresses/<int:id>
     def delete(self, id):
