@@ -477,13 +477,15 @@ api.add_resource(ProductsByID, '/product/<int:id>')
 
 # GET /product_categories
 class ProductCategories(Resource):
+#NO MAX RECURSION
+#FULLY FUNCTIONAL
     def get(self):
         # 1 query
         pcs = ProductCategory.query.all()
         if not pcs:
             return {"error": "Product Category not found."}, 404
         # 2 dict
-        pcs_dict = [pc.to_dict for pc in pcs]
+        pcs_dict = [pc.to_dict() for pc in pcs]
         # 3 res
         res = make_response(
             pcs_dict,
@@ -493,13 +495,14 @@ class ProductCategories(Resource):
 
 
 # POST /product_categories
-
+#NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
+#AVAILABLE FOR TESTING PURPOSES
     def post(self):
         # 1 set data as JSON
         data = request.get_json()
         # 2 create instance
         new_product = ProductCategory(
-            category_name=data.get(['product_category'])
+            category_name=data.get('category_name')
         )
         # add/commit to db
         db.session.add(new_product)
@@ -559,6 +562,7 @@ class ProductCategoryById(Resource):
         db.session.commit()
         # return res
         return make_response({}, 204)
+api.add_resource(ProductCategoryById, "/product_categories/<int:id>")
 
 ################ INVENTORY ################
 
