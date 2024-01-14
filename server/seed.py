@@ -191,28 +191,24 @@ def seed_order():
     print('seeding order')
     try:
         buyer = Buyer.query.first()
-
-        product = Product.query.first()
-
         order = Order(buyer=buyer)
-
-        order_items = []
-        for product in product:
-            order_item = Order_Item(order=order, product=product, quantity=3, price=product.price)
-        
-        order.order_items.extend(order_items)
-
-        order.total_price = sum(item.price * item.quantity for item in order_items)
-
-        order.status = Order_Status.query.filter_by(name='Pending').first()
-
-        sale_history = SaleHistory(order=order, buiness=product.business_id)
-
+        order.total_price = 21.00
         db.session.add(order)
+        db.session.flush()
+        product = Product.query.first()
+        order_item = Order_Item(order_id=order.id, product=product, quantity=3, price=product.product_price)
+        db.session.add(order_item)
+        db.session.flush()
+        order.order_items.append(order_item)
+        order.status_id = 1
+        db.session.commit()
+        sale_history = SaleHistory(order_id=order.id, business_id=1)
         db.session.add(sale_history)
         db.session.commit()
+        print("Order seeded successfully!")
     except Exception as e:
-        return f'{e}'
+        print(f"Error seeding order: {e}")
+        db.session.rollback()
 
 def seed_reviews():
     print('seeding reviews')
@@ -290,5 +286,5 @@ if __name__ == '__main__':
         # seed_address()
         # seed_messages()
         # seed_reviews()
-        # seed_order()
-        pass
+        seed_order()
+        # pass
