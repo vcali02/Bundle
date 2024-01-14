@@ -471,7 +471,7 @@ class ProductsByID(Resource):
 api.add_resource(ProductsByID, '/product/<int:id>')
 
 ######### ATTRIBUTES ################
-
+#POST AND DELETE
 
 ################ PRODUCT CATEGORIES ################
 
