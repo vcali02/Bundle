@@ -169,13 +169,25 @@ def buyer_logout():
 # GET /businesses
 # note: ROUTE classes MUST be called DIFFERENT than MODEL class
 class Businesses(Resource):
+#NO MAX RECURSION
+#FULLY FUNCTIONAL 
     def get(self):
         # 1 query
         bs = Business.query.all()
         if not bs:
             return {"error": "Business not found."}, 404
         # 2 dict aka res into JSON obj
-        b_dict = [b.to_dict() for b in bs]
+        b_dict = [b.to_dict(
+            only=(
+                "business_name", 
+                "business_address", 
+                "business_img", 
+                "business_banner_img", 
+                "business_desc", 
+                "bis_category_id", 
+                "business_category",
+                )
+            ) for b in bs]
         # 3 res
         res = make_response(
             b_dict,
@@ -193,7 +205,7 @@ class Businesses(Resource):
             business_address=data.get('business_address'),
             business_img=data.get('business_img'),
             business_banner_img=data.get('business_banner_img'),
-            business_desc=data.get('business_desc'),
+            business_desc=data.get('business_desc')
         )
         # 3 add/commit to database
         db.session.add(new_bis)
@@ -271,9 +283,11 @@ api.add_resource(BusinessById, "/businesses/<int:id>")
 
 # GET /business_categories
 class BusinessCategories(Resource):
+#NO MAX RECURSION
+#FULLY FUNCTIONAL
     def get(self):
         # 1 query
-        bcs = Business.query.all()
+        bcs = BusinessCategory.query.all()
         if not bcs:
             return {"error": "Business not found."}, 404
         # 2 turn to JSON w dict
@@ -285,27 +299,29 @@ class BusinessCategories(Resource):
         )
         return res
 
+#NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
+#AVAILABLE FOR TESTING PURPOSES
 # POST /business_categories
-    def post(self):
-        # 1 set data as JSON
-        data = request.get_json()
-        # 2 create instance
-        new_bis_cat = BusinessCategory(
-            category_name=data.get('cat')
-        )
-        # 3 add to db
-        db.session.add(new_bis_cat)
-        db.session.commit()
+    # def post(self):
+    #     # 1 set data as JSON
+    #     data = request.get_json()
+    #     # 2 create instance
+    #     new_bis_cat = BusinessCategory(
+    #         category_name=data.get('category_name')
+    #     )
+    #     # 3 add to db
+    #     db.session.add(new_bis_cat)
+    #     db.session.commit()
 
-        # 4 dict aka res into JSON obj
-        new_bis_cat_dict = new_bis_cat.to_dict()
+    #     # 4 dict aka res into JSON obj
+    #     new_bis_cat_dict = new_bis_cat.to_dict()
 
-        # 5 res to JSON obj
-        res = make_response(
-            new_bis_cat_dict,
-            201
-        )
-        return res
+    #     # 5 res to JSON obj
+    #     res = make_response(
+    #         new_bis_cat_dict,
+    #         201
+    #     )
+    #     return res
 
 
 # add route
@@ -323,26 +339,28 @@ class BusinessCategoryById(Resource):
             one_bc_dict,
             200
         )
+        return res
 
 # PATCH /business_categories/<int:id>
+#NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
+#AVAILABLE FOR TESTING PURPOSES
+    # def patch(self, id):
+    #     # 1 query by id
+    #     bc = BusinessCategory.query.filter_by(id=id).first()
 
-    def patch(self, id):
-        # 1 query by id
-        bc = BusinessCategory.query.filter_by(id=id).first()
+    #     # 2 get data from request in JSON format
+    #     data = request.get_json()
 
-        # 2 get data from request in JSON format
-        data = request.get_json()
+    #     # 3 update values in the model
+    #     for attr in data:
+    #         setattr(bc, attr, data.get(attr))
 
-        # 3 update values in the model
-        for attr in data:
-            setattr(bc, attr, data.get(attr))
+    #     # 4 update the database
+    #     db.session.add(bc)
+    #     db.session.commit()
 
-        # 4 update the database
-        db.session.add(bc)
-        db.session.commit()
-
-        # 5 return res
-        return make_response(bc.to_dict(), 200)
+    #     # 5 return res
+    #     return make_response(bc.to_dict(), 200)
 
 
 # DELETE /business_categories/<int:id>
@@ -367,7 +385,14 @@ api.add_resource(BusinessCategoryById, "/business_categories/<int:id>")
 # GET
 class Products(Resource):
     def get(self):
-        products = [product.to_dict() for product in Product.query.all()]
+        products = [product.to_dict(
+            only=(
+                # "product_name",
+                # "product_description",
+                "product_img",
+                # "product_price",
+            )
+        ) for product in Product.query.all()]
         response = make_response(
             products,
             200

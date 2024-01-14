@@ -125,7 +125,11 @@ class Business(db.Model, SerializerMixin):
 
     # SERIALIZE RULES
 
-    serialize_rules = ('-seller', '-business_category', 'business_products')
+    serialize_rules = (
+        '-seller', 
+        '-business_category', 
+        'business_products'
+        )
 
 
 ############ BUSINESS CATEGORIES ############
@@ -137,7 +141,6 @@ class BusinessCategory(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    # FOREIGN KEY
     category_name = db.Column(db.String)
 
     # RELATIONSHIP
