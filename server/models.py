@@ -338,6 +338,11 @@ class Review(db.Model, SerializerMixin):
         return rating
 
     # SERIALIZE RULES
+    serialize_rules=(
+        "-reviews",
+        "-buyer",
+        "-product",
+    )
 
 ################# SALEHISTORY #################
 

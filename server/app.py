@@ -497,27 +497,27 @@ class ProductCategories(Resource):
 # POST /product_categories
 #NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
 #AVAILABLE FOR TESTING PURPOSES
-    def post(self):
-        # 1 set data as JSON
-        data = request.get_json()
-        # 2 create instance
-        new_product = ProductCategory(
-            category_name=data.get('category_name')
-        )
-        # add/commit to db
-        db.session.add(new_product)
-        db.session.commit()
+    # def post(self):
+    #     # 1 set data as JSON
+    #     data = request.get_json()
+    #     # 2 create instance
+    #     new_product = ProductCategory(
+    #         category_name=data.get('category_name')
+    #     )
+    #     # add/commit to db
+    #     db.session.add(new_product)
+    #     db.session.commit()
 
-        # 4 dict aka res into JSON obj
-        new_product_dict = new_product.to_dict()
+    #     # 4 dict aka res into JSON obj
+    #     new_product_dict = new_product.to_dict()
 
-        # 5 res
-        res = make_response(
-            new_product_dict,
-            201
-        )
-        # 6 return res
-        return res
+    #     # 5 res
+    #     res = make_response(
+    #         new_product_dict,
+    #         201
+    #     )
+    #     # 6 return res
+    #     return res
 
 
 api.add_resource(ProductCategories, "/product_categories")
@@ -551,17 +551,20 @@ class ProductCategoryById(Resource):
 
 
 # DELETE /product_categories/<int:id>
+#NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
+#AVAILABLE FOR TESTING PURPOSES
+    # def delete(self, id):
+    #     # 1 query
+    #     pc = ProductCategory.query.filter_by(id=id).first()
+    #     if not pc:
+    #         return {'error': "Product Category not found."}, 404
+    #     # delete/commit from/to db
+    #     db.session.delete(pc)
+    #     db.session.commit()
+    #     # return res
+    #     return make_response({}, 204)
+    
 
-    def delete(self, id):
-        # 1 query
-        pc = ProductCategory.query.filter_by(id=id).first()
-        if not pc:
-            return {'error': "Product Category not found."}, 404
-        # delete/commit from/to db
-        db.session.delete(pc)
-        db.session.commit()
-        # return res
-        return make_response({}, 204)
 api.add_resource(ProductCategoryById, "/product_categories/<int:id>")
 
 ################ INVENTORY ################
@@ -569,23 +572,29 @@ api.add_resource(ProductCategoryById, "/product_categories/<int:id>")
 
 ################ REVIEWS ################
 class Reviews(Resource):
+#NO MAX RECURSION
+#GET /review
     def get(self):
-        reviews = [review.to_dict() for review in Product.query.all()]
+        reviews = [review.to_dict() for review in Review.query.all()]
         response = make_response(
             reviews,
             200
         )
         return response
-    # POST
-
+    
+# POST
     def post(self):
         try:
             data = request.get_json()
             print(data)
+
+            # Decode base64-encoded image data to binary
+            review_img = base64.b64decode(data.get("review_img", ""))
+
             review = Review(
                 review=data["review"],
                 rating=data["rating"],
-                review_img=data["review_img"],
+                review_img=review_img,
             )
             db.session.add(review)
             db.session.commit()
@@ -655,12 +664,33 @@ api.add_resource(ReviewsByID, '/review/<int:id>')
 # GET
 class Orders(Resource):
     def get(self):
-        orders = [order.to_dict() for order in User.query.all()]
+        orders = [order.to_dict() for order in Order.query.all()]
         response = make_response(
             orders,
             200
         )
         return response
+    
+#NEED A POST BUT NOT NORMAL BC RELATIONSHIPS AND FK ONLY ATTRIBUTES IN MODEL
+# def post(self):
+#         try:
+#             data = request.get_json()
+#             print(data)
+
+#             new_order = Order(
+#                 sale_history=data['sale_history'],
+#             )
+#             db.session.add(new_order)
+#             db.session.commit()
+#         except Exception as e:
+#             return make_response({
+#                 "errors": [e.__str__()]
+#             }, 422)
+#         response = make_response(
+#             new_order.to_dict(),
+#             201
+#         )
+#         return response
 
 
 api.add_resource(Orders, '/orders')
@@ -718,12 +748,11 @@ api.add_resource(OrderByID, '/order/<int:id>')
 
 ################ ORDER ITEMS ################
 # GET
-
-
+#FULLY FUNCTIONAL
 class OrderItems(Resource):
     def get(self):
         orderItems = [orderItem.to_dict()
-                      for orderItem in OrderItem.query.all()]
+                      for orderItem in Order_Item.query.all()]
         response = make_response(
             orderItems,
             200
@@ -735,12 +764,10 @@ api.add_resource(OrderItems, '/orderitems')
 
 ################ ORDER STATUS ################
 # GET
-
-
+#FULLY FUNCTIONAL
 class OrderStatus(Resource):
     def get(self):
-        orderStatus = [orderStatuss.to_dict()
-                       for orderStatuss in OrderStatus.query.all()]
+        orderStatus = [orderStatus.to_dict() for orderStatus in Order_Status.query.all()]
         response = make_response(
             orderStatus,
             200
@@ -787,7 +814,7 @@ api.add_resource(Payment, '/payment')
 
 # GET /messages
 
-
+#NOT COMPLETE, CHECK POST, OTHERWISE FULLY FUNCTIONAL
 class Messages(Resource):
     def get(self):
         ms = Message.query.all()
@@ -809,8 +836,8 @@ class Messages(Resource):
             content=data.get('content'),
             read_by_buyer=data.get('read_by_buyer'),
             read_by_seller=data.get('read_by_seller'),
-            attachments=data.get(['attachments']),
-            conversations=data.get('conversations'),
+            attachments=data.get('attachments')
+            # conversations=data.get('conversations'),
         )
         db.session.add(new_msg)
         db.session.commit()
