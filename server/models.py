@@ -125,7 +125,11 @@ class Business(db.Model, SerializerMixin):
 
     # SERIALIZE RULES
 
-    serialize_rules = ('-seller', '-business_category', 'business_products')
+    serialize_rules = (
+        '-seller', 
+        '-business_category', 
+        'business_products'
+        )
 
 
 ############ BUSINESS CATEGORIES ############
@@ -137,7 +141,6 @@ class BusinessCategory(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    # FOREIGN KEY
     category_name = db.Column(db.String)
 
     # RELATIONSHIP
@@ -201,6 +204,10 @@ class Product(db.Model, SerializerMixin):
     order_items = db.relationship('Order_Item', back_populates="product")
 
     # SERIALIZE RULES
+    serialize_rules=(
+        "-product_attributes",
+        "-product",
+    )
 
 
 ################# ATTRIBUTES #################
@@ -225,9 +232,15 @@ class Attribute(db.Model, SerializerMixin):
     )
 
     # one attribute belongs to one inventory; one inventory belongs to one attribute
-    inventories = db.relationship('Inventory', back_populates='attribute')
+    inventories = db.relationship(
+        'Inventory', back_populates='attribute'
+    )
 
     # VALIDATION
+    serialize_rules=(
+        "-product_attributes",
+        "-attribute",
+    )
 
     # SERIALIZER RULES
 
@@ -277,7 +290,9 @@ class Inventory(db.Model, SerializerMixin):
     )
 
     # one attribute belongs to one inventory; one inventory belongs to one attribute
-    attribute = db.relationship('Attribute', back_populates='inventories')
+    attribute = db.relationship(
+        'Attribute', back_populates='inventories'
+    )
 
     # VALIDATION
 
@@ -289,7 +304,9 @@ class Inventory(db.Model, SerializerMixin):
 
     # SERIALIZE RULES
 
-    serialize_rules = ('-product', 'attribute')
+    serialize_rules = (
+        '-product', 'attribute', "-inventories",
+        )
 
 
 ################# REVIEWS ##################
@@ -335,6 +352,11 @@ class Review(db.Model, SerializerMixin):
         return rating
 
     # SERIALIZE RULES
+    serialize_rules=(
+        "-reviews",
+        "-buyer",
+        "-product",
+    )
 
 ################# SALEHISTORY #################
 
