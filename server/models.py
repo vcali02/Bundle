@@ -522,7 +522,7 @@ class MessageRecipient(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     message_id = db.Column(db.Integer, db.ForeignKey("messages.id"))
-    user_type = db.Column(db.Enum("buyer", "seller", name="user_type_enum"))
+    user_type = db.Column(db.String, default=None)
     buyer_id = db.Column(db.Integer, db.ForeignKey("buyers.id"))
     seller_id = db.Column(db.Integer, db.ForeignKey("sellers.id"))
 
