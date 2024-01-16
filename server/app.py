@@ -35,6 +35,8 @@ class CheckSession(Resource):
             user = current_user.to_dict()
             return user, 200
         return {"error": "unauthorized"}, 401
+
+
 api.add_resource(CheckSession, '/check_session')
 
 
@@ -44,23 +46,24 @@ api.add_resource(CheckSession, '/check_session')
 class SellerSignup(Resource):
     def post(self):
         data = request.get_json()
-        
+
         try:
             seller_img = data['seller_img']
             with open(seller_img, 'rb') as img:
                 image_data = img.read()
                 encoded_image = base64.b64encode(image_data)
         except:
-            image_path = os.path.join("images", "blank-profile-picture-973460_960_720.png")
+            image_path = os.path.join(
+                "images", "blank-profile-picture-973460_960_720.png")
             with open(image_path, 'rb') as img:
                 image_data = img.read()
                 encoded_image = base64.b64encode(image_data)
-            
+
         new_seller = Seller(
-            seller_name = data['seller_name'],
-            seller_email = data['seller_email'],
-            seller_username = data['seller_username'],
-            seller_img = encoded_image
+            seller_name=data['seller_name'],
+            seller_email=data['seller_email'],
+            seller_username=data['seller_username'],
+            seller_img=encoded_image
         )
         new_seller.password_hash = data['seller_password']
 
@@ -71,7 +74,9 @@ class SellerSignup(Resource):
 
         return new_seller.to_dict(), 201
 
+
 api.add_resource(SellerSignup, '/seller_signup')
+
 
 class SellerLogin(Resource):
     def post(self):
@@ -81,7 +86,7 @@ class SellerLogin(Resource):
             password = data.get('seller_password')
 
             seller = Seller.query.filter(Seller.seller_email == email).first()
-            
+
             if seller:
                 if seller.authenticate(password):
                     login_user(seller, remember=True)
@@ -90,8 +95,10 @@ class SellerLogin(Resource):
                 return {'error': '404: User not found'}, 404
         except Exception as e:
             return {'error': {e}}, 401
-        
+
+
 api.add_resource(SellerLogin, '/seller_login')
+
 
 @app.route('/seller_logout', methods=["POST"])
 @login_required
@@ -100,6 +107,7 @@ def seller_logout():
     return 'you logged out'
 
 #### BUYER ####
+
 class BuyerSignup(Resource):
     def post(self):
         data = request.get_json()
@@ -109,17 +117,18 @@ class BuyerSignup(Resource):
                 image_data = img.read()
                 encoded_image = base64.b64encode(image_data)
         except:
-            image_path = os.path.join("images", "blank-profile-picture-973460_960_720.png")
+            image_path = os.path.join(
+                "images", "blank-profile-picture-973460_960_720.png")
             with open(image_path, 'rb') as img:
                 image_data = img.read()
                 encoded_image = base64.b64encode(image_data)
 
         new_buyer = Buyer(
-            buyer_name = data['buyer_name'],
-            buyer_email = data['buyer_email'],
-            buyer_username = data['buyer_username'],
-            buyer_image = encoded_image
-        
+            buyer_name=data['buyer_name'],
+            buyer_email=data['buyer_email'],
+            buyer_username=data['buyer_username'],
+            buyer_image=encoded_image
+
         )
         new_buyer.password_hash = data['buyer_password']
         print(type(encoded_image))
@@ -129,9 +138,11 @@ class BuyerSignup(Resource):
         login_user(new_buyer, remember=True)
 
         return new_buyer.to_dict(), 201
-    
+
+
 api.add_resource(BuyerSignup, '/buyer_signup')
-    
+
+
 class BuyerLogin(Resource):
     def post(self):
         try:
@@ -142,7 +153,7 @@ class BuyerLogin(Resource):
             buyer = Buyer.query.filter(Buyer.buyer_email == email).first()
 
             if buyer:
-                ipdb.set_traceback();
+                ipdb.set_traceback()
                 if buyer.authenticate(password):
                     login_user(buyer, remember=True)
                     print(buyer.to_dict())
@@ -151,8 +162,10 @@ class BuyerLogin(Resource):
                     return {'error': '404: User not found'}, 404
         except Exception as e:
             return {'error': {e}}, 401
-        
+
+
 api.add_resource(BuyerLogin, '/buyer_login')
+
 
 @app.route('/buyer_logout', methods=["POST"])
 @login_required
@@ -540,38 +553,77 @@ class ProductCategoryById(Resource):
 
 ################ REVIEWS ################
 class Reviews(Resource):
-    def get(self):
-        reviews = [review.to_dict() for review in Product.query.all()]
-        response = make_response(
-            reviews,
-            200
-        )
-        return response
-    # POST
-
-    def post(self):
+    def get(self, product_id):
         try:
+            reviews = Review.query.filter_by(product_id=product_id).all()
+            review_list = []
+            for review in reviews:
+                review_info = {
+                    'review_id': review.id,
+                    'buyer_id': review.buyer_id,
+                    'buyer_name': review.buyer.name,
+                    'rating': review.rating,
+                    'review_text': review.review,
+                    'created_at': review.created_at
+                }
+                if review.updated_at:
+                    review_info['updated_at'] = review.updated_at.isoformat()
+                if review.review_img:
+                    review_info['review_img'] = review.review_img
+
+                review_list.append(review_info)
+            return review_list, 200
+        except Exception as e:
+            return {'error': 'An error occurred while fetching the reviews', 'Message': {e}}, 500
+    
+    @login_required
+    def post(self, product_id):
+        try:
+            buyer_id = current_user.id
             data = request.get_json()
-            print(data)
+            rating = int(data.get('rating'))
+            review_text = data.get('review_text')
+            if data['review_img']:
+                try:
+                    review_img = data['review_img']
+                    with open(review_img, 'rb') as img:
+                        image_data = img.read()
+                        encoded_image = base64.b64encode(image_data)
+                except Exception as e:
+                    return {'Error': 'error while processing image', 'Message': {e}}, 500
+            
             review = Review(
-                review=data["review"],
-                rating=data["rating"],
-                review_img=data["review_img"],
+                buyer_id=buyer_id,
+                product_id=product_id,
+                review = review_text,
+                rating=rating
             )
+            if encoded_image:
+                review['review_img'] = encoded_image
+            
             db.session.add(review)
             db.session.commit()
+
+            review_info = {
+                    'review_id': review.id,
+                    'buyer_id': review.buyer_id,
+                    'buyer_name': review.buyer.name,
+                    'rating': review.rating,
+                    'review_text': review.review,
+                    'created_at': review.created_at
+                }
+            if review.updated_at:
+                    review_info['updated_at'] = review.updated_at.isoformat()
+            if review.review_img:
+                    review_info['review_img'] = review.review_img
+            
+            return review_info, 201 
+
         except Exception as e:
-            return make_response({
-                "errors": [e.__str__()]
-            }, 422)
-        response = make_response(
-            review.to_dict(),
-            201
-        )
-        return response
+            return {'error': 'An error occurred while creating review', 'Message': {e}}, 500
 
+api.add_resource(Reviews, '/review/<product_id>')
 
-api.add_resource(Reviews, '/review')
 ################ REVIEWSBYID ################
 
 # GET
@@ -707,19 +759,6 @@ api.add_resource(OrderItems, '/orderitems')
 ################ ORDER STATUS ################
 # GET
 
-
-class OrderStatus(Resource):
-    def get(self):
-        orderStatus = [orderStatuss.to_dict()
-                       for orderStatuss in OrderStatus.query.all()]
-        response = make_response(
-            orderStatus,
-            200
-        )
-        return response
-
-
-api.add_resource(OrderStatus, '/orderstatus')
 
 ################ SHOPIFY INFO ################
 # GET

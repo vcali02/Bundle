@@ -98,6 +98,7 @@ class Business(db.Model, SerializerMixin):
 
     business_name = db.Column(db.String, unique=True)
     business_address = db.Column(db.String)
+    # seperate business_address to address and state
     business_img = db.Column(db.String)
     business_banner_img = db.Column(db.String)
     business_desc = db.Column(db.String)
