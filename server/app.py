@@ -41,6 +41,56 @@ api.add_resource(CheckSession, '/check_session')
 ## START ############## LOGIN / USER ################
 
 #### SELLER ####
+class Seller(Resource):
+    @classmethod
+    @login_required
+    def get(cls):
+        current_seller = Seller.get_current_user()
+        if current_seller:
+            return current_seller, 200
+        else:
+            return {"error": "unauthorized"}, 401
+    def patch(self):
+        try:
+            seller = current_user
+            if seller:
+                data = request.get_json()
+                seller.email = data.get("email", seller.email)
+
+                #hash password before updating
+                password = data.get('password')
+                if password:
+                    hashed_password = generate_password_hash(password)
+                    seller.password_hash = hashed_password
+
+                    db.session.commit()
+                    return {
+                        "id": seller.id,
+                        "name": seller.name,
+                        "email": seller.email
+                    }, 200
+                else:
+                    return {"error": "User not found"}, 404
+        except:
+            return {"error": "An error occurred while updating the user"}, 500
+
+    
+    def delete(cls):
+        current_seller = Seller.get_current_user()
+        if current_seller:
+            try:
+                db.session.delete(current_seller)
+                db.session.commit()
+                return {"message": "Account deleted successfully"}, 200
+            except Exception as e:
+                db.session.rollback()
+                return {"error": "Failed to delete account: " + str(e)}, 500
+        else:
+            return {"error": "unauthorized"}, 401
+    
+api.add_resource(Seller, '/seller')
+
+
 class SellerSignup(Resource):
     def post(self):
         data = request.get_json()
@@ -100,6 +150,54 @@ def seller_logout():
     return 'you logged out'
 
 #### BUYER ####
+class Buyer(Resource):
+    @classmethod
+    @login_required
+    def get(cls):
+        current_buyer = Buyer.get_current_user()
+        if current_buyer:
+            return current_buyer, 200
+        else:
+            return {"error": "unauthorized"}, 401
+        
+    def patch(self):
+        try:
+            buyer = current_user
+            if buyer:
+                data = request.get_json()
+                buyer.email = data.get("email", buyer.email)
+
+                #hash password before updating
+                password = data.get('password')
+                if password:
+                    hashed_password = generate_password_hash(password)
+                    buyer.password_hash = hashed_password
+
+                    db.session.commit()
+                    return {
+                        "id": buyer.id,
+                        "name": buyer.name,
+                        "email": buyer.email
+                    }, 200
+                else:
+                    return {"error": "User not found"}, 404
+        except:
+            return {"error": "An error occurred while updating the user"}, 500
+    def delete(cls):
+        current_buyer = Buyer.get_current_user()
+        if current_buyer:
+            try:
+                db.session.delete(current_buyer)
+                db.session.commit()
+                return {"message": "Account deleted successfully"}, 200
+            except Exception as e:
+                db.session.rollback()
+                return {"error": "Failed to delete account: " + str(e)}, 500
+        else:
+            return {"error": "unauthorized"}, 401
+    
+api.add_resource(Buyer, '/buyer')
+
 class BuyerSignup(Resource):
     def post(self):
         data = request.get_json()
