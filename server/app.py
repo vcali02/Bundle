@@ -225,7 +225,6 @@ class BuyerSignup(Resource):
             buyer_email=data['buyer_email'],
             buyer_username=data['buyer_username'],
             buyer_image=encoded_image
-
         )
         new_buyer.password_hash = data['buyer_password']
         print(type(encoded_image))
@@ -250,7 +249,6 @@ class BuyerLogin(Resource):
             buyer = Buyer.query.filter(Buyer.buyer_email == email).first()
 
             if buyer:
-                ipdb.set_traceback()
                 if buyer.authenticate(password):
                     login_user(buyer, remember=True)
                     print(buyer.to_dict())
@@ -388,6 +386,32 @@ class BusinessById(Resource):
 # add route
 api.add_resource(BusinessById, "/businesses/<int:id>")
 
+#GET /business_by_category
+class BusinessByCategory(Resource):
+
+    def get(self, category):
+            # 1 query
+            bs = Business.query.filter_by(bis_category_id=category).all()
+            if not bs:
+                return {"error": "Business not found."}, 404
+            # 2 dict aka res into JSON obj
+            b_dict = [b.to_dict(
+                only=(
+                    "business_name", 
+                    "business_img", 
+                    "business_desc", 
+                    "bis_category_id", 
+                    "business_category",
+                    )
+                ) for b in bs]
+            # 3 res
+            res = make_response(
+                b_dict,
+                200
+            )
+            return res
+    
+api.add_resource(BusinessByCategory, "/business_by_category/<int:category>")
 
 ################ BUSINESS CATEGORIES ################
 
@@ -580,6 +604,45 @@ class ProductsByID(Resource):
 
 api.add_resource(ProductsByID, '/product/<int:id>')
 
+#GET /products_by_bis/<int:business>
+class ProductsByBis(Resource):
+    def get(self, business):
+        products = [product.to_dict(
+            only=(
+                "product_name",
+                # "product_description",
+                # "product_img",
+                "product_price",
+            )
+        ) for product in Product.query.filter_by(business_id=business).all()]
+        response = make_response(
+            products,
+            200
+        )
+        return response
+    
+api.add_resource(ProductsByBis, "/products_by_bis/<int:business>")
+
+#GET /products_by_bis/<int:business>
+class ProductsByCat(Resource):
+    def get(self, category):
+        products = [product.to_dict(
+            only=(
+                "product_name",
+                # "product_description",
+                # "product_img",
+                "product_price",
+            )
+        ) for product in Product.query.filter_by(product_category_id=category).all()]
+        response = make_response(
+            products,
+            200
+        )
+        return response
+    
+api.add_resource(ProductsByCat, "/products_by_cat/<int:category>")
+
+
 ######### ATTRIBUTES ################
 #GET /attributes
 class Attributes(Resource):
@@ -754,6 +817,8 @@ class ProductCategoryById(Resource):
 api.add_resource(ProductCategoryById, "/product_categories/<int:id>")
 
 ################ INVENTORY ################
+
+
 
 
 ################ REVIEWS ################
@@ -964,6 +1029,65 @@ class OrderByID(Resource):
 
 
 api.add_resource(OrderByID, '/order/<int:id>')
+
+#GET /orders_by_buyer/
+class OrderByBuyer(Resource):
+    def get(self):
+        buyer = current_user.id
+        orders = [order.to_dict(
+            only= (
+                "buyer_id",
+                )
+        ) for order in Order.query.filter_by(buyer_id=buyer).all()]
+        response = make_response(
+            orders,
+            200
+        )
+        return response
+    
+api.add_resource(OrderByBuyer, "/orders_by_buyer")
+
+#GET /buyers_specific_orders
+class BuyersSpecificOrder(Resource):
+    def get(self, order_id):
+        try:
+            buyer_id = current_user
+            order = Order.query.filter_by(id=order_id, buyer_id=buyer_id).first()
+            if order:
+                order_items = [
+                    {
+                        "product_id": item.product_id,
+                        "product_name": item.product.name,
+                        "quantity": item.quantity,
+                        "price": item.price
+                    }
+                    for item in order.order_items
+                ]
+                order_info = {
+                    "order_id": order.id,
+                    "total_price": order.total_price,
+                    "order_items": order_items,
+                    "order_status": order.status_id
+                }
+                return order_info, 200
+            else:
+                return {"error": "order not found"}, 400
+        except Exception as e:
+            return {"error": "an error occurred while processing", "Message": {e}}, 500
+        
+        # buyer = current_user.id
+        # orders = [order.to_dict(
+        #     only= (
+        #         "buyer_id",
+        #         )
+        # ) for order in Order.query.filter_by(buyer_id=buyer and id=order_id).all()]
+        # response = make_response(
+        #     orders,
+        #     200
+        # )
+        # return response
+    
+api.add_resource(BuyersSpecificOrder, "/buyers_specific_orders/<int:order>")
 
 ################ ORDER ITEMS ################
 # GET
