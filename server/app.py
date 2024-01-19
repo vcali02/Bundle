@@ -992,53 +992,53 @@ api.add_resource(BuyerReview, '/buyer/reviews/<review_id>')
 
 ################ SALE HISTORY ################
 #GET - doing by User since this should be applicable for both sellers and buyers
-class SaleHistoryByUser(Resource):
-    def get(self):
-        current_user = User.get_current_user()
-        if not current_user:
-                {"error": "Unauthorized Access"},
-                404
+# class SaleHistoryByUser(Resource):
+#     def get(self):
+#         current_user = User.get_current_user()
+#         if not current_user:
+#                 {"error": "Unauthorized Access"},
+#                 404
 
-        sale_histories = SaleHistory.query.join(
-            "order"
-        ).join(
-            "business"
-        ).filter(Order.user_id == current_user.id).all()
+#         sale_histories = SaleHistory.query.join(
+#             "order"
+#         ).join(
+#             "business"
+#         ).filter(Order.user_id == current_user.id).all()
 
-        if not sale_histories:
-            {"error": "No sale history found for this user"},
-            404
+#         if not sale_histories:
+#             {"error": "No sale history found for this user"},
+#             404
 
-        response = make_response("Sale history retrieved successfully", 200)
-        return response
-    def patch(self, order_id):
-        current_user = User.get_current_user()  
-        if not current_user:
-                {"error": "User not found"},
-                404
+#         response = make_response("Sale history retrieved successfully", 200)
+#         return response
+#     def patch(self, order_id):
+#         current_user = User.get_current_user()  
+#         if not current_user:
+#                 {"error": "User not found"},
+#                 404
 
-        order = Order.query.filter_by(id=order_id).first()
-        if not order:
-                {"error": "Order not found"},
-                404
-        new_status_id = request.json.get("status_id")
-        if not new_status_id:
-                "Missing status_id in request data",
-                404
+#         order = Order.query.filter_by(id=order_id).first()
+#         if not order:
+#                 {"error": "Order not found"},
+#                 404
+#         new_status_id = request.json.get("status_id")
+#         if not new_status_id:
+#                 "Missing status_id in request data",
+#                 404
 
-        try:
-            new_status = Order_Status.query.get(new_status_id)
-            if not new_status:
-                {"error": "Invalid ID"},
-                404
+#         try:
+#             new_status = Order_Status.query.get(new_status_id)
+#             if not new_status:
+#                 {"error": "Invalid ID"},
+#                 404
 
-            order.status = new_status
-            db.session.commit()  
+#             order.status = new_status
+#             db.session.commit()  
 
-            response = make_response("Order status updated successfully", 200)
-        return response
+#             response = make_response("Order status updated successfully", 200)
+#         return response
 
-api.add_resource(SaleHistoryByUser, '/salehistorybyuser/<int:id>')
+# api.add_resource(SaleHistoryByUser, '/salehistorybyuser/<int:id>')
 
 
 ################ ORDERS ################
@@ -1152,75 +1152,75 @@ api.add_resource(Payment, '/payment')
 # NOT COMPLETE, CHECK POST, OTHERWISE FULLY FUNCTIONAL
 
 
-class Messages(Resource):
-    def get(self):
-        ms = Message.query.all()
-        if not ms:
-            return {"error": "Message not found."}, 404
-        ms_dict = [m.to_dict() for m in ms]
-        res = make_response(
-            ms_dict,
-            200
-        )
-        return res
+# class Messages(Resource):
+#     def get(self):
+#         ms = Message.query.all()
+#         if not ms:
+#             return {"error": "Message not found."}, 404
+#         ms_dict = [m.to_dict() for m in ms]
+#         res = make_response(
+#             ms_dict,
+#             200
+#         )
+#         return res
 
-# POST /messages
-    def post(self):
+# # POST /messages
+#     def post(self):
 
-        data = request.get_json()
+#         data = request.get_json()
 
-        new_msg = Message(
-            content=data.get('content'),
-            read_by_buyer=data.get('read_by_buyer'),
-            read_by_seller=data.get('read_by_seller'),
-            attachments=data.get('attachments')
-            # conversations=data.get('conversations'),
-        )
-        db.session.add(new_msg)
-        db.session.commit()
+#         new_msg = Message(
+#             content=data.get('content'),
+#             read_by_buyer=data.get('read_by_buyer'),
+#             read_by_seller=data.get('read_by_seller'),
+#             attachments=data.get('attachments')
+#             # conversations=data.get('conversations'),
+#         )
+#         db.session.add(new_msg)
+#         db.session.commit()
 
-        new_msg_dict = new_msg.to_dict()
+#         new_msg_dict = new_msg.to_dict()
 
-        res = make_response(
-            new_msg_dict,
-            201
-        )
-        return res
+#         res = make_response(
+#             new_msg_dict,
+#             201
+#         )
+#         return res
 
 
-api.add_resource(Messages, "/messages")
+# api.add_resource(Messages, "/messages")
 
 # GET /messages/<int:id>
 
 
-class MessageById(Resource):
-    def get(self, id):
-        m = Message.query.filter_by(id=id).first()
+# class MessageById(Resource):
+#     def get(self, id):
+#         m = Message.query.filter_by(id=id).first()
 
-        if not m:
-            return {"error": "Message not found."}, 404
+#         if not m:
+#             return {"error": "Message not found."}, 404
 
-        m_dict = m.to_dict()
+#         m_dict = m.to_dict()
 
-        res = make_response(
-            m_dict,
-            200
-        )
-        return res
+#         res = make_response(
+#             m_dict,
+#             200
+#         )
+#         return res
 
-# PATCH /messages/<int:id>
+# # PATCH /messages/<int:id>
 
-# DELETE /messages/<int:id>
-    def delete(self, id):
-        m = Message.query.filter_by(id=id).first()
-        if not m:
-            return {"error": "Message not found."}, 404
-        db.session.delete(m)
-        db.session.commit()
-        return make_response({}, 204)
+# # DELETE /messages/<int:id>
+#     def delete(self, id):
+#         m = Message.query.filter_by(id=id).first()
+#         if not m:
+#             return {"error": "Message not found."}, 404
+#         db.session.delete(m)
+#         db.session.commit()
+#         return make_response({}, 204)
 
 
-api.add_resource(MessageById, "/messages/<int:id>")
+# api.add_resource(MessageById, "/messages/<int:id>")
 
 ################ MESSAGE RECIPIENT ################
 
