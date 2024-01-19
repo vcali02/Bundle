@@ -975,90 +975,6 @@ api.add_resource(ReviewsByID, '/review/<int:id>')
 ################ SALE HISTORY ################
 
 ################ ORDERS ################
-# GET
-class Orders(Resource):
-    def get(self):
-        orders = [order.to_dict() for order in Order.query.all()]
-        response = make_response(
-            orders,
-            200
-        )
-        return response
-
-# NEED A POST BUT NOT NORMAL BC RELATIONSHIPS AND FK ONLY ATTRIBUTES IN MODEL
-# def post(self):
-#         try:
-#             data = request.get_json()
-#             print(data)
-
-#             new_order = Order(
-#                 sale_history=data['sale_history'],
-#             )
-#             db.session.add(new_order)
-#             db.session.commit()
-#         except Exception as e:
-#             return make_response({
-#                 "errors": [e.__str__()]
-#             }, 422)
-#         response = make_response(
-#             new_order.to_dict(),
-#             201
-#         )
-#         return response
-
-
-api.add_resource(Orders, '/orders')
-################ ORDERSBYID ################
-# GET
-
-
-class OrderByID(Resource):
-    def get(self, id):
-        order = Order.query.filter_by(id=id).first()
-        if not order:
-            abort(404, "order not found")
-        order_dict = order.to_dict()
-        response = make_response(
-            order_dict,
-            200
-        )
-        return response
-    # PATCH
-
-    def patch(self, id):
-        order = Order.query.filter_by(id=id).first()
-        if not order:
-            return make_response({'error': 'order not found'}, 404)
-        data = request.get_json()
-        for attr in data:
-            setattr(order, attr, data[attr])
-        db.session.add(order)
-        db.session.commit()
-
-        return make_response(order.to_dict(), 202)
-    # DELETE
-
-    def delete(self, id):
-        order = Order.query.filter_by(id=id).first()
-        if not order:
-            make_response(
-                {"error": "order not found"},
-                404
-            )
-        db.session.delete(order)
-        db.session.commit()
-
-        order = Order.query.filter_by(id=id).first()
-        if not order:
-            make_response(
-                {"error": "order not found"},
-                404
-            )
-        db.session.delete(order)
-        db.session.commit()
-
-
-api.add_resource(OrderByID, '/order/<int:id>')
 
 #GET /orders_by_buyer/
 class OrderByBuyer(Resource):
@@ -1104,18 +1020,6 @@ class BuyersSpecificOrder(Resource):
                 return {"error": "order not found"}, 400
         except Exception as e:
             return {"error": "an error occurred while processing", "Message": {e}}, 500
-        
-        # buyer = current_user.id
-        # orders = [order.to_dict(
-        #     only= (
-        #         "buyer_id",
-        #         )
-        # ) for order in Order.query.filter_by(buyer_id=buyer and id=order_id).all()]
-        # response = make_response(
-        #     orders,
-        #     200
-        # )
-        # return response
     
 api.add_resource(BuyersSpecificOrder, "/buyers_specific_orders/<int:order>")
 
