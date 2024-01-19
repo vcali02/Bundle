@@ -1003,7 +1003,7 @@ api.add_resource(OrderByBuyer, "/orders_by_buyer")
 class BuyersSpecificOrder(Resource):
     def get(self, order_id):
         try:
-            buyer_id = current_user
+            buyer_id = current_user.id
             order = Order.query.filter_by(id=order_id, buyer_id=buyer_id).first()
             if order:
                 order_items = [
@@ -1175,94 +1175,100 @@ api.add_resource(MessageById, "/messages/<int:id>")
 # GET /addresses
 # FUNCTIONALLY COMPLETE
 class Addresses(Resource):
+    @login_required
     def get(self):
-        # 1 query
-        ads = Address.query.all()
-        # 2 dict
-        ads_dict = [ad.to_dict() for ad in ads]
-        # res
-        res = make_response(
-            ads_dict,
-            200
-        )
-        return res
+        try:
+            buyer_id = current_user.id
+            addresses = Address.query.filter_by(buyer_id=buyer_id).all()
+            address_list = []
+            for address in addresses:
+                address_info = {
+                    'id': address.id,
+                    'address_line_one': address.address_line_one,
+                    'address_line_two': address.address_line_two,
+                    'city': address.city,
+                    'state': address.state,
+                    'zipcode':address.zip,
+                    'type': address.address_type
+                }
+                address_list.append(address_info)
+            return address_list, 200
+        except Exception as e:
+            return {'Error': 'There was an error getting the address', 'Message':{e}}, 500
 
 # POST /addresses
+    @login_required
     def post(self):
-        # 1 set data as JSON
-        data = request.get_json()
-        # 2 create instance
-        new_ad = Address(
-            address_line_one=data.get('address_line_one'),
-            address_line_two=data.get('address_line_two'),
-            city=data.get('city'),
-            state=data.get('state'),
-            postal_code=data.get('postal_code'),
-            address_type=data.get('address_type'),
-        )
-        # 3 add/commit to database
-        db.session.add(new_ad)
-        db.session.commit()
+        try:
+            data = request.json()
+            buyer_id = current_user.id
+            address = Address(
+                buyer_id=buyer_id,
+                address_line_one=data['address_line_one'],
+                address_line_two=data['address_line_two'],
+                city=data['city'],
+                state=data['state'],
+                zip=data['zip'],
+                address_type=data['address_type']
+            )
+            db.session.add(address)
+            db.session.commit()
 
-        # 4 dict aka res into JSON obj
-        new_ad_dict = new_ad.to_dict()
-
-        # 5 res
-        res = make_response(
-            new_ad_dict,
-            201
-        )
-        # 6 return res
-        return res
-
+            address_info = {
+                    'id': address.id,
+                    'address_line_one': address.address_line_one,
+                    'address_line_two': address.address_line_two,
+                    'city': address.city,
+                    'state': address.state,
+                    'zipcode':address.zip,
+                    'type': address.address_type
+                }
+            return address_info, 201
+        except Exception as e:
+            return {'error': 'An error occurred while creating the address', "message": str(e)}, 500
 
 api.add_resource(Addresses, "/addresses")
 
 # GET /addresses/<int:id>
 
-
 class AddressById(Resource):
-    def get(self, id):
-        # 1 query
-        ad = Address.query.filter_by(id=id).first()
-        if not ad:
-            return {"error": "Address not found."}, 404
-        # 2 dict
-        ad_dict = ad.to_dict()
-        # res
-        res = make_response(
-            ad_dict,
-            200
-        )
-        return res
-
-
+    
 # PATCH /addresses/<int:id>
+    @login_required
+    def patch(self, address_id):
+        try:
+            buyer_id = current_user.id
+            data = request.get_json()
 
-    def patch(self, id):
-        ad = Address.query.filter_by(id=id).first()
-        data = request.get_json()
-        if not ad:
-            return {'error': 'address not found'}, 404
-        # data = request.get_json()
-        for attr in data:
-            setattr(ad, attr, data.get(attr))
-        db.session.add(ad)
-        db.session.commit()
+            address = Address.query.filter_by(id=address_id, buyer_id=buyer_id).first()
 
-        return make_response(ad.to_dict(), 202)
+            if not address:
+                return {'error':'address not found'}, 404
+            
+            for attr in data:
+                setattr(address, attr, data[attr])
+            db.session.add(address)
+            db.session.commit()
 
+            return address.to_dict(), 200
+        except Exception as e:
+            return {'Error':'An error occurred while updating the address', 'message': {e}}, 500
+        
+    @login_required
+    def delete(self, address_id):
+        try:
+            buyer_id = current_user.id
+            address = Address.query.filter_by(id=address_id, buyer_id=buyer_id).first()
 
-# DELETE /addresses/<int:id>
+            if not address:
+                return {"Error":"Address not found"}, 404
+            
+            db.session.delete(address)
+            db.session.commit()
 
-
-    def delete(self, id):
-        ad = Address.query.filter_by(id=id).first()
-        if not ad:
-            return {"error": "Address not found."}, 404
-        db.session.delete(ad)
-        db.session.commit()
-        return make_response({}, 204)
+            return {}, 204
+        except Exception as e:
+            return {'Error':'An error occured while deleting the address'}, 500
 
 
 api.add_resource(AddressById, "/addresses/<int:id>")
