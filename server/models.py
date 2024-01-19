@@ -435,6 +435,7 @@ class Order(db.Model, SerializerMixin):
     status = db.relationship('Order_Status', backref='orders')
 
     # SERIALIZE RULES
+  
 
 
 ################# ORDERITEMS ################
