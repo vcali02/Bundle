@@ -409,6 +409,17 @@ class BusinessById(Resource):
 # add route
 api.add_resource(BusinessById, "/businesses/<int:id>")
 
+###### BUSINESSBYSTATE #####
+class BusinessByState(Resource):
+    def get(self, business_state):
+        state = Business.query.filter_by(business_state=business_state).all()
+        if not state:
+            return {"error": "State not found"},
+            404
+        return [business.to_dict() for business in state]
+    
+api.add_resource(BusinessByState, '/BusinessByState/<str: business_state')
+
 #GET /business_by_category
 class BusinessByCategory(Resource):
 
