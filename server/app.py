@@ -919,9 +919,10 @@ class Orders(Resource):
 
 
 api.add_resource(Orders, '/orders')
-################ ORDERSBYID ################
+################ ORDERSBYBUYERBYID ################
 # GET
 
+        
 
 class OrderByID(Resource):
     def get(self, id):
