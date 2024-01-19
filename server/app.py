@@ -409,6 +409,17 @@ class BusinessById(Resource):
 # add route
 api.add_resource(BusinessById, "/businesses/<int:id>")
 
+###### BUSINESSBYSTATE #####
+class BusinessByState(Resource):
+    def get(self, business_state):
+        state = Business.query.filter_by(business_state=business_state).all()
+        if not state:
+            return {"error": "State not found"},
+            404
+        return [business.to_dict() for business in state]
+    
+api.add_resource(BusinessByState, '/BusinessByState/<str: business_state')
+
 #GET /business_by_category
 class BusinessByCategory(Resource):
 
@@ -589,7 +600,8 @@ class ProductsByID(Resource):
     def get(self, id):
         product = Product.query.filter_by(id=id).first()
         if not product:
-            abort(404, "Product not found")
+            {"error": "Product not found"},
+            404
         product_dict = product.to_dict()
         response = make_response(
             product_dict,
@@ -979,6 +991,55 @@ api.add_resource(BuyerReview, '/buyer/reviews/<review_id>')
 
 
 ################ SALE HISTORY ################
+#GET - doing by User since this should be applicable for both sellers and buyers
+class SaleHistoryByUser(Resource):
+    def get(self):
+        current_user = User.get_current_user()
+        if not current_user:
+                {"error": "Unauthorized Access"},
+                404
+
+        sale_histories = SaleHistory.query.join(
+            "order"
+        ).join(
+            "business"
+        ).filter(Order.user_id == current_user.id).all()
+
+        if not sale_histories:
+            {"error": "No sale history found for this user"},
+            404
+
+        response = make_response("Sale history retrieved successfully", 200)
+        return response
+    def patch(self, order_id):
+        current_user = User.get_current_user()  
+        if not current_user:
+                {"error": "User not found"},
+                404
+
+        order = Order.query.filter_by(id=order_id).first()
+        if not order:
+                {"error": "Order not found"},
+                404
+        new_status_id = request.json.get("status_id")
+        if not new_status_id:
+                "Missing status_id in request data",
+                404
+
+        try:
+            new_status = Order_Status.query.get(new_status_id)
+            if not new_status:
+                {"error": "Invalid ID"},
+                404
+
+            order.status = new_status
+            db.session.commit()  
+
+            response = make_response("Order status updated successfully", 200)
+        return response
+
+api.add_resource(SaleHistoryByUser, '/salehistorybyuser/<int:id>')
+
 
 ################ ORDERS ################
 
