@@ -924,52 +924,58 @@ class Reviews(Resource):
 
 api.add_resource(Reviews, '/review/<product_id>')
 
-################ REVIEWSBYID ################
+# Buyer specific reviews
 
-# GET
+class BuyerReview(Resource):
+    @login_required
+    def patch(self, review_id):
+        try:
+            buyer_id = current_user.id
+            review_to_edit = Review.query.filter_by(id=review_id, buyer_id=buyer_id).first()
 
+            if review_to_edit:
+                data = request.get_json()
+                rating = data.get('rating')
+                review = data.get('review')
 
-class ReviewsByID(Resource):
-    def get(self, id):
-        review = Review.query.filter_by(id=id).first()
-        if not review:
-            abort(404, "Review not found")
-        review_dict = review.to_dict()
-        response = make_response(
-            review_dict,
-            200
-        )
-        return response
-    # POST
-    # PATCH
+                review_to_edit.rating = rating
+                review_to_edit.review = review
+                review.updated_at = datetime.datetime.now()
 
-    def patch(self, id):
-        review = Review.query.filter_by(id=id).first()
-        if not review:
-            return make_response({'error': 'review not found'},
-                                 404
-                                 )
-        data = request.get_json()
-        for attr in data:
-            setattr(review, attr, data[attr])
-        db.session.add(review)
-        db.session.db.session.commit()
+                db.session.commit()
 
-        return make_response(review.to_dict(), 202)
+                review_info = {
+                    'review_id': review_to_edit.id,
+                    'buyer_id': review_to_edit.buyer_id,
+                    'rating': review_to_edit.rating,
+                    'review': review_to_edit.review,
+                    'created_at': review.created_at.isoformat() if review.created_at else None
+                }
 
-    # DELETE
-    def delete(self, id):
-        review = Review.query.filter_by(id=id).first()
-        if not review:
-            make_response(
-                {"error": "review not found"},
-                404
-            )
-        db.session.delete(review)
-        db.session.commit()
+                if review.updated_at:
+                    review_info['updated_at'] = review.updated_at.isoformat()
+                return review_info, 200
+            else:
+                return {'Error': 'Review not found'}, 404
+        except Exception as e:
+            return {'Error': 'An error occurred while updating review', 'Message': {e}}, 500
+    
+    @login_required
+    def delete(self, review_id):
+        try:
+            buyer_id = current_user.id
+            review = Review.query.filter_by(id=review_id, buyer_id=buyer_id).first()
 
-
-api.add_resource(ReviewsByID, '/review/<int:id>')
+            if review:
+                db.session.delete(review)
+                db.session.commit()
+                return {}, 204
+            else:
+                return {'Error': 'Review not found'}, 404
+        except Exception as e:
+            return {'Error': 'An error occured while deleting review', 'Message': {e}}, 500
+        
+api.add_resource(BuyerReview, '/buyer/reviews/<review_id>')
 
 
 ################ SALE HISTORY ################
