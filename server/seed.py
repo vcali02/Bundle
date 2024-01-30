@@ -59,7 +59,7 @@ def seed_test_buyer():
         image_data = image_file.read()
         encoded_image = base64.b64encode(image_data)
 
-    buyer = [{'buyer_name': 'Evan Roberts', 'buyer_email': 'evanroberts@email.com', 'buyer_username': 'EvanRoberts', 'buyer_password': 'password', 'buyer_img': encoded_image}]
+    buyer = [{'buyer_name': 'Val', 'buyer_email': 'val@email.com', 'buyer_username': 'val123', 'buyer_password': 'password', 'buyer_img': encoded_image}]
 
     for buyer_data in buyer:
         try:

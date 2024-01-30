@@ -6,6 +6,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_serializer import SerializerMixin
 from flask_login import UserMixin, LoginManager
+
 import re
 from datetime import datetime
 
@@ -34,6 +35,9 @@ class Seller(db.Model, SerializerMixin, UserMixin):
     seller_business = db.relationship(
         "Business", back_populates="seller"
     )
+
+    def get_id(self):
+        return f"seller_{self.id}"
 
     # VALIDATION
     @validates('seller_email')
@@ -651,8 +655,11 @@ class Buyer(db.Model, SerializerMixin, UserMixin):
         "Order", back_populates="buyer"
     )
 
+    def get_id(self):
+        return f"buyer_{self.id}"
+
     # SERIALIZE RULES
-    serialize_rules = ('-addresses',)
+    serialize_rules = ('-addresses', '-order', '-reviews')
     # VALIDATIONS
 
     @validates('buyer_email')

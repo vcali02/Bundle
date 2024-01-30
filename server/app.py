@@ -4,7 +4,7 @@ from flask_restful import Resource
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import generate_password_hash
 from config import app, db, api
-from models import db, Seller, Business, BusinessCategory, Product, Attribute, ProductCategory, Inventory, Review, SaleHistory, Order, Order_Item, Order_Status, ShopifyInfo, Payment, Message, OrderHistory, Address, Buyer
+from models import db, Seller, Business, BusinessCategory, Product, Attribute, ProductCategory, Inventory, Review, SaleHistory, Order, Order_Item, Order_Status, ShopifyInfo, Payment, Message, MessageRecipient, OrderHistory, Address, Buyer
 import datetime
 import traceback
 import os
@@ -17,16 +17,15 @@ buyer_login_manager.init_app(app)
 seller_login_manager = LoginManager()
 seller_login_manager.init_app(app)
 
-
 @buyer_login_manager.user_loader
 def load_buyer(buyer_id):
-    return Buyer.query.filter_by(id=buyer_id).first()
-
+    user_id = buyer_id.split('_')[1]
+    return Buyer.query.get(int(user_id))
 
 @seller_login_manager.user_loader
 def load_seller(seller_id):
-    return Seller.query.filter_by(id=seller_id).first()
-
+    user_id = seller_id.split('_')[1]
+    return Seller.query.get(int(user_id))
 
 # DELETE LATER
 class CheckSession(Resource):
@@ -35,8 +34,6 @@ class CheckSession(Resource):
             user = current_user.to_dict()
             return user, 200
         return {"error": "unauthorized"}, 401
-
-
 api.add_resource(CheckSession, '/check_session')
 
 #### SELLER ####
@@ -108,7 +105,7 @@ class SellerSignup(Resource):
             seller_img = data['seller_img']
             with open(seller_img, 'rb') as img:
                 image_data = img.read()
-                encoded_image = base64.b64encode(image_data)
+                encoded_image = base64.b64encode(image_data) 
         except:
             image_path = os.path.join(
                 "images", "blank-profile-picture-973460_960_720.png")
@@ -143,17 +140,17 @@ class SellerLogin(Resource):
             password = data.get('seller_password')
 
             seller = Seller.query.filter(Seller.seller_email == email).first()
-
+            
             if seller:
                 if seller.authenticate(password):
                     login_user(seller, remember=True)
                     return seller.to_dict(), 200
                 else:
-                    return {'error': 'Couldn\'t authenticate password'}
+                    return {'error': 'incorrect password'}
             if not seller:
                 return {'error': '404: User not found'}, 404
         except Exception as e:
-            return {'error': {e}}, 401
+            return {'error': {e}}, 500
 
 
 api.add_resource(SellerLogin, '/seller_login')
@@ -273,8 +270,9 @@ class BuyerLogin(Resource):
 
             if buyer:
                 if buyer.authenticate(password):
-                    login_user(buyer, remember=True)
                     print(buyer.to_dict())
+                    login_user(buyer, remember=True)
+ 
                     return buyer.to_dict(), 200
                 if not buyer:
                     return {'error': '404: User not found'}, 404
@@ -418,7 +416,7 @@ class BusinessByState(Resource):
             404
         return [business.to_dict() for business in state]
     
-api.add_resource(BusinessByState, '/BusinessByState/<str: business_state')
+api.add_resource(BusinessByState, '/BusinessByState/<business_state>')
 
 #GET /business_by_category
 class BusinessByCategory(Resource):
@@ -593,7 +591,6 @@ class Products(Resource):
 
 api.add_resource(Products, '/products')
 
-
 ################ PRODUCTSBYID ################
 # GET
 class ProductsByID(Resource):
@@ -608,8 +605,6 @@ class ProductsByID(Resource):
             200
         )
         return response
-    # POST
-    # PATCH
 
     def patch(self, id):
         product = Product.query.filter_by(id=id).first()
@@ -1147,83 +1142,63 @@ api.add_resource(Payment, '/payment')
 
 ################ MESSAGING ################
 
-# GET /messages
+class BuyerConversations(Resource):
+    def get(self):
+        buyer_id = current_user.id
 
-# NOT COMPLETE, CHECK POST, OTHERWISE FULLY FUNCTIONAL
+        convos = MessageRecipient(buyer_id = buyer_id).all()
 
+        return convos.to_dict(), 200
 
-# class Messages(Resource):
-#     def get(self):
-#         ms = Message.query.all()
-#         if not ms:
-#             return {"error": "Message not found."}, 404
-#         ms_dict = [m.to_dict() for m in ms]
-#         res = make_response(
-#             ms_dict,
-#             200
-#         )
-#         return res
+class BuyerMessages(Resource):
+    # Message Model
+    # content, read_by_buyer, read_by_seller, attachments, seller_id, buyer_id, rel=recipients
 
-# # POST /messages
-#     def post(self):
+    # MessageRecipient Model
+    # message_id, user_type, buyer_id, seller_id, rel=message
+    @login_required
+    def get(self, business_id):
+        try:
+            buyer_id = current_user.id
+            business = Business.query.get(business_id).first()
+            if not business:
+                return {'Error': 'Business not found'}, 404
+            seller_id = business.seller_id
 
-#         data = request.get_json()
+            messages = [message.to_dict() for message in Message.query.filter((Message.seller_id == seller_id) and (Message.buyer_id == buyer_id)).order_by(Message.created_at.asc()).all()]
 
-#         new_msg = Message(
-#             content=data.get('content'),
-#             read_by_buyer=data.get('read_by_buyer'),
-#             read_by_seller=data.get('read_by_seller'),
-#             attachments=data.get('attachments')
-#             # conversations=data.get('conversations'),
-#         )
-#         db.session.add(new_msg)
-#         db.session.commit()
+            return messages, 200
 
-#         new_msg_dict = new_msg.to_dict()
+        except Exception as e:
+            return {'Error': 'Error while processing', 'Message': {e}}, 500
 
-#         res = make_response(
-#             new_msg_dict,
-#             201
-#         )
-#         return res
+api.add_resource(BuyerMessages, '/buyer_messages/<int:business_id>')
 
+class SellerMessages(Resource):
+    # Message Model
+    # content, read_by_buyer, read_by_seller, attachments, seller_id, buyer_id, rel=recipients
 
-# api.add_resource(Messages, "/messages")
+    # MessageRecipient Model
+    # message_id, user_type, buyer_id, seller_id, rel=message
 
-# GET /messages/<int:id>
+    # Might Change
+    @login_required
+    def get(self, order_id):
+        try:
+            seller_id = current_user.id
+            order = Order.query.get(order_id).first()
+            if not order:
+                return {'Error': 'Order not found'}, 404
+            buyer_id = order.buyer_id
 
+            messages = [message.to_dict() for message in Message.query.filter((Message.seller_id == seller_id) and (Message.buyer_id == buyer_id)).order_by(Message.created_at.asc()).all()]
 
-# class MessageById(Resource):
-#     def get(self, id):
-#         m = Message.query.filter_by(id=id).first()
+            return messages, 200
 
-#         if not m:
-#             return {"error": "Message not found."}, 404
+        except Exception as e:
+            return {'Error': 'Error while processing', 'Message': {e}}, 500
 
-#         m_dict = m.to_dict()
-
-#         res = make_response(
-#             m_dict,
-#             200
-#         )
-#         return res
-
-# # PATCH /messages/<int:id>
-
-# # DELETE /messages/<int:id>
-#     def delete(self, id):
-#         m = Message.query.filter_by(id=id).first()
-#         if not m:
-#             return {"error": "Message not found."}, 404
-#         db.session.delete(m)
-#         db.session.commit()
-#         return make_response({}, 204)
-
-
-# api.add_resource(MessageById, "/messages/<int:id>")
-
-################ MESSAGE RECIPIENT ################
-
+api.add_resource(SellerMessages, '/seller_messages/<int:business_id>')
 
 ################ ORDER HISTORY ################
 # list of all
