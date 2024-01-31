@@ -14,18 +14,18 @@ import base64
 migrate = Migrate(app, db)
 buyer_login_manager = LoginManager()
 buyer_login_manager.init_app(app)
-seller_login_manager = LoginManager()
-seller_login_manager.init_app(app)
+# seller_login_manager = LoginManager()
+# seller_login_manager.init_app(app)
 
 @buyer_login_manager.user_loader
 def load_buyer(buyer_id):
     user_id = buyer_id.split('_')[1]
     return Buyer.query.get(int(user_id))
 
-@seller_login_manager.user_loader
-def load_seller(seller_id):
-    user_id = seller_id.split('_')[1]
-    return Seller.query.get(int(user_id))
+# @seller_login_manager.user_loader
+# def load_seller(seller_id):
+#     user_id = seller_id.split('_')[1]
+#     return Seller.query.get(int(user_id))
 
 # DELETE LATER
 class CheckSession(Resource):
@@ -202,7 +202,7 @@ class Buyers(Resource):
             else:
                 return {'Error': 'buyer not found'}, 404
         except Exception as e:
-            return {'Error': 'An error occurred while updating the buyer', 'Message': {e}}, 500
+            return {'Error': 'An error occurred while updating the buyer', 'Message': str(e)}, 500
         
     @login_required
     def delete(self):
@@ -414,7 +414,15 @@ class BusinessByState(Resource):
         if not state:
             return {"error": "State not found"},
             404
-        return [business.to_dict() for business in state]
+        return [business.to_dict(
+            only=(
+                    "business_name", 
+                    "business_img", 
+                    "business_desc", 
+                    "bis_category_id", 
+                    "business_category",
+                    )
+        ) for business in state]
     
 api.add_resource(BusinessByState, '/BusinessByState/<business_state>')
 
@@ -867,10 +875,10 @@ class Reviews(Resource):
                 review_info = {
                     'review_id': review.id,
                     'buyer_id': review.buyer_id,
-                    'buyer_name': review.buyer.name,
+                    'buyer_name': review.buyer.buyer_name,
                     'rating': review.rating,
                     'review_text': review.review,
-                    'created_at': review.created_at
+                    'created_at': review.created_at.isoformat()
                 }
                 if review.updated_at:
                     review_info['updated_at'] = review.updated_at.isoformat()
@@ -880,7 +888,7 @@ class Reviews(Resource):
                 review_list.append(review_info)
             return review_list, 200
         except Exception as e:
-            return {'error': 'An error occurred while fetching the reviews', 'Message': {e}}, 500
+            return {'error': 'An error occurred while fetching the reviews', 'Message': str(e)}, 500
 
     @login_required
     def post(self, product_id):
