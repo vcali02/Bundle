@@ -6,6 +6,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy_serializer import SerializerMixin
 from flask_login import UserMixin, LoginManager
+
 import re
 from datetime import datetime
 
@@ -34,6 +35,9 @@ class Seller(db.Model, SerializerMixin, UserMixin):
     seller_business = db.relationship(
         "Business", back_populates="seller"
     )
+
+    def get_id(self):
+        return f"seller_{self.id}"
 
     # VALIDATION
     @validates('seller_email')
@@ -98,6 +102,9 @@ class Business(db.Model, SerializerMixin):
 
     business_name = db.Column(db.String, unique=True)
     business_address = db.Column(db.String)
+    business_state = db.Column(db.String)
+    business_zip = db.Column(db.Integer)
+
     business_img = db.Column(db.String)
     business_banner_img = db.Column(db.String)
     business_desc = db.Column(db.String)
@@ -122,6 +129,25 @@ class Business(db.Model, SerializerMixin):
     sale_histories = db.relationship("SaleHistory", back_populates='business')
 
     # VALIDATION
+
+    @validates('business_state')
+    def validate_state(self, key, business_state):
+        valid_states = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA',
+                        'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+                        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT',
+                        'VA', 'WA', 'WV', 'WI', 'WY']
+        if business_state not in valid_states:
+            raise ValueError(
+                'Invalid state, please make sure state is abreviated in all caps.')
+        return business_state
+
+    @validates('business_zip')
+    def validate_business_zip(self, key, business_zip):
+        pattern = r'^\d{5}$'
+
+        if not re.match(pattern, str(business_zip)):
+            raise ValueError('Invalid postal code')
+        return business_zip
 
     # SERIALIZE RULES
 
@@ -413,6 +439,7 @@ class Order(db.Model, SerializerMixin):
     status = db.relationship('Order_Status', backref='orders')
 
     # SERIALIZE RULES
+  
 
 
 ################# ORDERITEMS ################
@@ -628,8 +655,11 @@ class Buyer(db.Model, SerializerMixin, UserMixin):
         "Order", back_populates="buyer"
     )
 
+    def get_id(self):
+        return f"buyer_{self.id}"
+
     # SERIALIZE RULES
-    serialize_rules = ('-addresses',)
+    serialize_rules = ('-addresses', '-order', '-reviews')
     # VALIDATIONS
 
     @validates('buyer_email')

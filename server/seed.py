@@ -53,6 +53,29 @@ def seed_test_seller():
         except KeyError as e:
             print(f'KeyError: {e} not found in seller_data: {seller_data}')
 
+def seed_test_buyer():
+    image_path = os.path.join("images", "blank-profile-picture-973460_960_720.png")
+    with open(image_path, "rb") as image_file:
+        image_data = image_file.read()
+        encoded_image = base64.b64encode(image_data)
+
+    buyer = [{'buyer_name': 'Val', 'buyer_email': 'val@email.com', 'buyer_username': 'val123', 'buyer_password': 'password', 'buyer_img': encoded_image}]
+
+    for buyer_data in buyer:
+        try:
+            password_hash = bcrypt.generate_password_hash(buyer_data['buyer_password']).decode('utf-8')
+            buyer_obj = Buyer(
+                buyer_name=buyer_data['buyer_name'],
+                buyer_email=buyer_data['buyer_email'],
+                buyer_username=buyer_data['buyer_username'],
+                buyer_password=password_hash,
+                buyer_image=buyer_data['buyer_img']
+            )
+            db.session.add(buyer_obj)
+            db.session.commit()
+        except KeyError as e:
+            print(f'KeyError: {e} not found in buyer_data: {buyer_data}')
+
 def seed_business():
     try:
         image_path = os.path.join("images", "illustration.png")
@@ -70,6 +93,9 @@ def seed_business():
                 "bis_category_id":1,
                 'seller_id':1,
                 'business_name':'Chocotonic',
+                'business_state':'NY',
+                'business_address':'123 Main Street',
+                'business_zip':13478,
                 'business_img': encoded_image,
                 'business_banner_img': encoded_image_2,
                 'business_desc': 'we sell chocolate :)'
@@ -81,6 +107,9 @@ def seed_business():
                 bis_category_id=business_data['bis_category_id'],
                 seller_id=business_data['seller_id'],
                 business_name=business_data['business_name'],
+                business_state=business_data['business_state'],
+                business_address=business_data['business_address'],
+                business_zip=business_data['business_zip'],
                 business_img=business_data['business_img'],
                 business_banner_img=business_data['business_banner_img'],
                 business_desc=business_data['business_desc']
@@ -132,8 +161,8 @@ def seed_inventory():
 
 def seed_attributes():
     chocolate_types = {
-    "milk chocolate": [5, 6, 7],
-    "dark chocolate": [1, 4], 
+    "milk chocolate": [4,5,6],
+    "dark chocolate": [1,3], 
     "white chocolate": [2]
     }
     for chocolate_type, product_ids in chocolate_types.items():
@@ -275,16 +304,17 @@ def seed_messages():
 
 if __name__ == '__main__':
     with app.app_context():
-        # seed_business_category()
-        # seed_product_category()
-        # seed_test_seller()
-        # seed_business()
-        # seed_product()
-        # seed_inventory()
-        # seed_attributes()
-        # seed_order_status()
-        # seed_address()
-        # seed_messages()
-        # seed_reviews()
+        seed_business_category()
+        seed_product_category()
+        seed_test_seller()
+        seed_test_buyer()
+        seed_business()
+        seed_product()
+        seed_attributes()
+        seed_inventory()
+        seed_order_status()
+        seed_address()
+        seed_messages()
+        seed_reviews()
         seed_order()
         # pass
