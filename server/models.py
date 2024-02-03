@@ -44,6 +44,9 @@ class Seller(db.Model, SerializerMixin, UserMixin):
     def validate_email(self, key, email):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError('Invalid email format')
+        if Buyer.query.filter_by(buyer_email=email).first():
+            raise ValueError("This email is already associated with an account")
+        
         return email
 
     # password_pattern = re.compile(r'^(?=.*[A-Z])(?=.*[!@#$%^&*()_+={}[\]:;<>,.?~\\/-])[a-zA-Z0-9!@#$%^&*()_+={}[\]:;<>,.?~\\/-]{8,}$')
@@ -666,6 +669,8 @@ class Buyer(db.Model, SerializerMixin, UserMixin):
     def validate_email(self, key, email):
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError('Invalid email format')
+        if Seller.query.filter_by(seller_email=email).first():
+            raise ValueError("This email is already associated with a seller account")
         return email
 
     @validates('username')

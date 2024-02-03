@@ -8,7 +8,7 @@ import json
 import os
 import base64
 
-bcrypt= Bcrypt()
+bcrypt = Bcrypt()
 
 def seed_business_category():
     try:

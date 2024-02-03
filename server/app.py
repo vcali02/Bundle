@@ -12,20 +12,23 @@ import ipdb
 import base64
 
 migrate = Migrate(app, db)
-buyer_login_manager = LoginManager()
-buyer_login_manager.init_app(app)
-seller_login_manager = LoginManager()
-seller_login_manager.init_app(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+# seller_login_manager = LoginManager()
+# seller_login_manager.init_app(app)
 
-@buyer_login_manager.user_loader
-def load_buyer(buyer_id):
-    user_id = buyer_id.split('_')[1]
-    return Buyer.query.get(int(user_id))
+@login_manager.user_loader
+def load_user(user_id):
+    user_type, actual_user_id = user_id.split('_', 1)
 
-@seller_login_manager.user_loader
-def load_seller(seller_id):
-    user_id = seller_id.split('_')[1]
-    return Seller.query.get(int(user_id))
+    model_to_query = Buyer if user_type == 'buyer' else Seller
+    user = model_to_query.query.get(int(actual_user_id))
+    return user
+
+# @seller_login_manager.user_loader
+# def load_seller(seller_id):
+#     user_id = seller_id.split('_')[1]
+#     return Seller.query.get(int(user_id))
 
 # DELETE LATER
 class CheckSession(Resource):
@@ -124,7 +127,8 @@ class SellerSignup(Resource):
         db.session.add(new_seller)
         db.session.commit()
 
-        login_user(new_seller, remember=True)
+        user_id = f"seller_{new_seller.id}"
+        login_user(user_id, remember=True)
 
         return new_seller.to_dict(), 201
 
@@ -139,12 +143,24 @@ class SellerLogin(Resource):
             email = data.get('seller_email')
             password = data.get('seller_password')
 
-            seller = Seller.query.filter(Seller.seller_email == email).first()
+            print("trying to query")
+
+            try:
+                seller = Seller.query.filter_by(seller_email=email).first()
+            except Exception as e:
+                print(f"Error in query: {e}")
+
+            print("query successful")
             
             if seller:
+                print("Past the first conditional")
                 if seller.authenticate(password):
-                    login_user(seller, remember=True)
-                    return seller.to_dict(), 200
+                    print("made it through the authenticate")
+                    user_id = f"seller_{seller.id}"
+                    print(f"uder_id: {user_id}")
+                    login_user(user_id, remember=True)
+                    print(seller.to_dict())
+                    # return seller.to_dict(), 200
                 else:
                     return {'error': 'incorrect password'}
             if not seller:
@@ -251,7 +267,8 @@ class BuyerSignup(Resource):
         db.session.add(new_buyer)
         db.session.commit()
 
-        login_user(new_buyer, remember=True)
+        user_id = f"buyer_{new_buyer.id}"
+        login_user(user_id, remember=True)
 
         return new_buyer.to_dict(), 201
 
@@ -270,8 +287,8 @@ class BuyerLogin(Resource):
 
             if buyer:
                 if buyer.authenticate(password):
-                    print(buyer.to_dict())
-                    login_user(buyer, remember=True)
+                    user_id = f"buyer_{buyer.id}"
+                    login_user(user_id, remember=True)
  
                     return buyer.to_dict(), 200
                 if not buyer:
@@ -867,10 +884,10 @@ class Reviews(Resource):
                 review_info = {
                     'review_id': review.id,
                     'buyer_id': review.buyer_id,
-                    'buyer_name': review.buyer.name,
+                    'buyer_name': review.buyer.buyer_name,
                     'rating': review.rating,
                     'review_text': review.review,
-                    'created_at': review.created_at
+                    'created_at': review.created_at.isoformat()
                 }
                 if review.updated_at:
                     review_info['updated_at'] = review.updated_at.isoformat()
