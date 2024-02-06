@@ -136,7 +136,8 @@ class SellerSignup(Resource):
         db.session.commit()
 
         user_id = f"seller_{new_seller.id}"
-        login_user(user_id, remember=True)
+        user = load_user(user_id)
+        login_user(user, remember=True)
 
         return new_seller.to_dict(), 201
 
@@ -151,19 +152,13 @@ class SellerLogin(Resource):
             email = data.get('seller_email')
             password = data.get('seller_password')
 
-            print("trying to query")
-
             try:
                 seller = Seller.query.filter_by(seller_email=email).first()
             except Exception as e:
                 print(f"Error in query: {e}")
 
-            print("query successful")
-
             if seller:
-                print("Past the first conditional")
                 if seller.authenticate(password):
-                    print("made it through the authenticate")
                     user_id = f"seller_{seller.id}"
                     user = load_user(user_id)
                     login_user(user, remember=True)
@@ -274,12 +269,13 @@ class BuyerSignup(Resource):
             buyer_image=encoded_image
         )
         new_buyer.password_hash = data['buyer_password']
-        print(type(encoded_image))
+
         db.session.add(new_buyer)
         db.session.commit()
 
         user_id = f"buyer_{new_buyer.id}"
-        login_user(user_id, remember=True)
+        user = load_user(user_id)
+        login_user(user, remember=True)
 
         return new_buyer.to_dict(), 201
 
@@ -299,8 +295,8 @@ class BuyerLogin(Resource):
             if buyer:
                 if buyer.authenticate(password):
                     user_id = f"buyer_{buyer.id}"
-                    login_user(user_id, remember=True)
-
+                    user = load_user(user_id)
+                    login_user(user, remember=True)
                     return buyer.to_dict(), 200
                 if not buyer:
                     return {'error': '404: User not found'}, 404
