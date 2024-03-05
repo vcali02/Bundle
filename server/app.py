@@ -1,37 +1,42 @@
 from flask_migrate import Migrate
 from flask import make_response, request
 from flask_restful import Resource
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, logout_user, login_required, current_user
 from flask_bcrypt import generate_password_hash
 from config import app, db, api
 from models import db, Seller, Business, BusinessCategory, Product, Attribute, ProductCategory, Inventory, Review, SaleHistory, Order, Order_Item, Order_Status, ShopifyInfo, Payment, Message, MessageRecipient, OrderHistory, Address, Buyer
-import datetime
+from datetime import timedelta, datetime
 import traceback
 import os
-import ipdb
 import base64
+import jwt
 
 migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
-# seller_login_manager = LoginManager()
-# seller_login_manager.init_app(app)
 
+@login_manager.request_loader
+def load_user_from_request(request):
+    auth_header = request.headers.get('Authorization')
+    if auth_header:
+        try:
+            token = auth_header.split(' ')[1]
+            data = jwt.decode(token, app.config['JWT_SECRET'], algorithms=['HS256'])
 
-@login_manager.user_loader
-def load_user(user_id):
-    user_type, actual_user_id = user_id.split('_', 1)
-    model_to_query = Buyer if user_type == 'buyer' else Seller
-    user = model_to_query.query.get(int(actual_user_id))
-    return user
+            user_type = data.get('user_type')
+            if user_type == 'seller':
+                user = Seller.query.filter_by(seller_email=data['sub']).first()
+            elif user_type == 'buyer':
+                user = Buyer.query.filter_by(buyer_email=data['sub']).first()
+            else:
+                return None
 
-# @seller_login_manager.user_loader
-# def load_seller(seller_id):
-#     user_id = seller_id.split('_')[1]
-#     return Seller.query.get(int(user_id))
+            return user
 
-# DELETE LATER
+        except jwt.ExpiredSignatureError:
+            return None
 
+    return None
 
 class CheckSession(Resource):
     def get(self):
@@ -44,7 +49,6 @@ class CheckSession(Resource):
 api.add_resource(CheckSession, '/check_session')
 
 #### SELLER ####
-
 
 class Sellers(Resource):
     @login_required
@@ -135,12 +139,13 @@ class SellerSignup(Resource):
         db.session.add(new_seller)
         db.session.commit()
 
-        user_id = f"seller_{new_seller.id}"
-        user = load_user(user_id)
-        login_user(user, remember=True)
+        token = jwt.encode({
+            'sub': new_seller.seller_email,
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(minutes=15)
+        }, app.config['JWT_SECRET'])
 
-        return new_seller.to_dict(), 201
-
+        return {'message': 'Seller created successfully', 'token': token}, 201
 
 api.add_resource(SellerSignup, '/seller_signup')
 
@@ -157,19 +162,18 @@ class SellerLogin(Resource):
             except Exception as e:
                 print(f"Error in query: {e}")
 
-            if seller:
-                if seller.authenticate(password):
-                    user_id = f"seller_{seller.id}"
-                    user = load_user(user_id)
-                    login_user(user, remember=True)
-                    print(seller.to_dict())
-                    return seller.to_dict(), 200
-                else:
-                    return {'error': 'incorrect password'}
-            if not seller:
-                return {'error': '404: User not found'}, 404
+            if seller and seller.authenticate(password):
+                token = jwt.encode({
+                    'sub': seller.seller_email,
+                    'iat': datetime.utcnow(),
+                    'exp': datetime.utcnow() + timedelta(minutes=30)
+                }, app.config['JWT_SECRET'])
+                return {'token': token}, 200
+            else:
+                return {'error': 'incorrect password'}, 401
+
         except Exception as e:
-            return {'error': {e}}, 500
+            return {'error': str(e)}, 500
 
 
 api.add_resource(SellerLogin, '/seller_login')
@@ -273,12 +277,13 @@ class BuyerSignup(Resource):
         db.session.add(new_buyer)
         db.session.commit()
 
-        user_id = f"buyer_{new_buyer.id}"
-        user = load_user(user_id)
-        login_user(user, remember=True)
+        token = jwt.encode({
+            'sub': new_buyer.buyer_email,
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(minutes=15)
+        }, app.config['JWT_SECRET'])
 
-        return new_buyer.to_dict(), 201
-
+        return {'message': 'Seller created successfully', 'token': token}, 201
 
 api.add_resource(BuyerSignup, '/buyer_signup')
 
@@ -290,19 +295,23 @@ class BuyerLogin(Resource):
             email = data.get('buyer_email')
             password = data.get('buyer_password')
 
-            buyer = Buyer.query.filter(Buyer.buyer_email == email).first()
+            try:
+                buyer = Buyer.query.filter_by(buyer_email=email).first()
+            except Exception as e:
+                print(f"Error in query: {e}")
 
-            if buyer:
-                if buyer.authenticate(password):
-                    user_id = f"buyer_{buyer.id}"
-                    user = load_user(user_id)
-                    login_user(user, remember=True)
-                    return buyer.to_dict(), 200
-                if not buyer:
-                    return {'error': '404: User not found'}, 404
+            if buyer and buyer.authenticate(password):
+                token = jwt.encode({
+                    'sub': buyer.buyer_email,
+                    'iat': datetime.utcnow(),
+                    'exp': datetime.utcnow() + timedelta(minutes=30)
+                }, app.config['JWT_SECRET'])
+                return {'token': token}, 200
+            else:
+                return {'error': 'incorrect password'}, 401
+
         except Exception as e:
-            return {'error': {e}}, 401
-
+            return {'error': str(e)}, 500
 
 api.add_resource(BuyerLogin, '/buyer_login')
 
@@ -562,7 +571,6 @@ class BusinessCategoryById(Resource):
 
 
 # DELETE /business_categories/<int:id>
-
 
     def delete(self, id):
         # 1 get by id
