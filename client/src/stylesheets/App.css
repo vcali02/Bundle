@@ -46,6 +46,21 @@ margin-bottom: 20px;
   margin-right: 10px;
 }
 
+select:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px var(--bundle-green) !important;
+}
+
+textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px var(--bundle-green) !important;
+}
+
+input:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px var(--bundle-green) !important;
+}
+
 /* Header */
 
 .custom-header {
@@ -53,6 +68,11 @@ margin-bottom: 20px;
 }
 
 /* Sign up and Sign in Forms */
+
+.error-message {
+  color: #b02020;
+}
+
 .signup-button, .login-button {
     margin-top: 10px;
     background-color: var(--bundle-green);
