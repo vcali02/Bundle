@@ -49,20 +49,11 @@ class Seller(db.Model, SerializerMixin, UserMixin):
         
         return email
 
-    # password_pattern = re.compile(r'^(?=.*[A-Z])(?=.*[!@#$%^&*()_+={}[\]:;<>,.?~\\/-])[a-zA-Z0-9!@#$%^&*()_+={}[\]:;<>,.?~\\/-]{8,}$')
-
-    # def is_password_valid(password):
-    #      return bool(password_pattern.match(password))
-
     @validates('password')
     def validate_password(self, key, password):
 
         if len(password) < 8:
             raise ValueError('Password must be at least 8 characters long.')
-        # elif (not is_password_valid(password)):
-        #      raise ValueError('Password must contain atleast one capital, one special character and one number')
-        # elif not re.search('[!@#$%^&*]', password):
-        #      raise ValueError('Password must contain at least one special character.')
         return password
 
     # SERIALIZE RULES
@@ -174,7 +165,6 @@ class BusinessCategory(db.Model, SerializerMixin):
 
     # RELATIONSHIP
 
-    # one business has many categories; one category has many businesses
     category = db.relationship(
         "Business", back_populates="business_category"
     )
@@ -308,6 +298,7 @@ class Inventory(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
     product_quantity = db.Column(db.Integer, nullable=False)
     attribute_id = db.Column(db.Integer, db.ForeignKey('attributes.id'))
+
     # FOREIGN KEYS
     product_id = db.Column(db.Integer, db.ForeignKey("products.id"))
 
@@ -427,7 +418,6 @@ class Order(db.Model, SerializerMixin):
     # RELATIONSHIP
     sale_history = db.relationship('SaleHistory', back_populates='order')
     # one sale belongs to one order; one order belongs to one sale
-    # sale_history relationship
 
     # one order belongs to one buyer; one buyer owns one order
     buyer = db.relationship(
@@ -588,9 +578,6 @@ class Address(db.Model, SerializerMixin):
     address_type = db.Column(db.String)
 
     # Relationship
-    # ADDRESSES
-    # arg 1= CLASS
-    # arg2 = VARIABLE
     buyer = db.relationship('Buyer', back_populates='addresses')
 
     # IN BUYER TABLE
