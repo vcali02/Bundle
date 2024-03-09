@@ -66,6 +66,7 @@ wcwidth = "==0.2.6"
 werkzeug = "==2.3.6"
 zipp = "==3.16.2"
 pandas = "*"
+pyjwt = "*"
 
 [dev-packages]
 

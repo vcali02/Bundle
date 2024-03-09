@@ -6,6 +6,7 @@ from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 import os
+import jwt
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -17,6 +18,7 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET'] = os.environ.get('JWT_SECRET')
 app.json.compact = False
 app.secret_key = os.environ.get('SECRET_KEY')
 

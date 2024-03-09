@@ -1,37 +1,42 @@
 from flask_migrate import Migrate
 from flask import make_response, request
 from flask_restful import Resource
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_required, current_user
 from flask_bcrypt import generate_password_hash
 from config import app, db, api
 from models import db, Seller, Business, BusinessCategory, Product, Attribute, ProductCategory, Inventory, Review, SaleHistory, Order, Order_Item, Order_Status, ShopifyInfo, Payment, Message, MessageRecipient, OrderHistory, Address, Buyer
-import datetime
+from datetime import timedelta, datetime
 import traceback
 import os
-import ipdb
 import base64
+import jwt
 
 migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
-# seller_login_manager = LoginManager()
-# seller_login_manager.init_app(app)
 
+@login_manager.request_loader
+def load_user_from_request(request):
+    auth_header = request.headers.get('Authorization')
+    if auth_header:
+        try:
+            token = auth_header.split(' ')[1]
+            data = jwt.decode(token, app.config['JWT_SECRET'], algorithms=['HS256'])
 
-@login_manager.user_loader
-def load_user(user_id):
-    user_type, actual_user_id = user_id.split('_', 1)
-    model_to_query = Buyer if user_type == 'buyer' else Seller
-    user = model_to_query.query.get(int(actual_user_id))
-    return user
+            user_type = data.get('user_type')
+            if user_type == 'seller':
+                user = Seller.query.filter_by(seller_email=data['sub']).first()
+            elif user_type == 'buyer':
+                user = Buyer.query.filter_by(buyer_email=data['sub']).first()
+            else:
+                return None
 
-# @seller_login_manager.user_loader
-# def load_seller(seller_id):
-#     user_id = seller_id.split('_')[1]
-#     return Seller.query.get(int(user_id))
+            return user
 
-# DELETE LATER
+        except jwt.ExpiredSignatureError:
+            return None
 
+    return None
 
 class CheckSession(Resource):
     def get(self):
@@ -44,7 +49,6 @@ class CheckSession(Resource):
 api.add_resource(CheckSession, '/check_session')
 
 #### SELLER ####
-
 
 class Sellers(Resource):
     @login_required
@@ -135,12 +139,13 @@ class SellerSignup(Resource):
         db.session.add(new_seller)
         db.session.commit()
 
-        user_id = f"seller_{new_seller.id}"
-        user = load_user(user_id)
-        login_user(user, remember=True)
+        token = jwt.encode({
+            'sub': new_seller.seller_email,
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(minutes=15)
+        }, app.config['JWT_SECRET'])
 
-        return new_seller.to_dict(), 201
-
+        return {'message': 'Seller created successfully', 'token': token}, 201
 
 api.add_resource(SellerSignup, '/seller_signup')
 
@@ -157,32 +162,23 @@ class SellerLogin(Resource):
             except Exception as e:
                 print(f"Error in query: {e}")
 
-            if seller:
-                if seller.authenticate(password):
-                    user_id = f"seller_{seller.id}"
-                    user = load_user(user_id)
-                    login_user(user, remember=True)
-                    print(seller.to_dict())
-                    return seller.to_dict(), 200
-                else:
-                    return {'error': 'incorrect password'}
-            if not seller:
-                return {'error': '404: User not found'}, 404
+            if seller and seller.authenticate(password):
+                token = jwt.encode({
+                    'sub': seller.seller_email,
+                    'iat': datetime.utcnow(),
+                    'exp': datetime.utcnow() + timedelta(minutes=30)
+                }, app.config['JWT_SECRET'])
+                return {'token': token}, 200
+            else:
+                return {'error': 'incorrect password'}, 401
+
         except Exception as e:
-            return {'error': {e}}, 500
+            return {'error': str(e)}, 500
 
 
 api.add_resource(SellerLogin, '/seller_login')
 
-
-@app.route('/seller_logout', methods=["POST"])
-@login_required
-def seller_logout():
-    logout_user()
-    return 'you logged out'
-
 #### BUYER ####
-
 
 class Buyers(Resource):
     @login_required
@@ -273,12 +269,13 @@ class BuyerSignup(Resource):
         db.session.add(new_buyer)
         db.session.commit()
 
-        user_id = f"buyer_{new_buyer.id}"
-        user = load_user(user_id)
-        login_user(user, remember=True)
+        token = jwt.encode({
+            'sub': new_buyer.buyer_email,
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(minutes=15)
+        }, app.config['JWT_SECRET'])
 
-        return new_buyer.to_dict(), 201
-
+        return {'message': 'Seller created successfully', 'token': token}, 201
 
 api.add_resource(BuyerSignup, '/buyer_signup')
 
@@ -290,46 +287,40 @@ class BuyerLogin(Resource):
             email = data.get('buyer_email')
             password = data.get('buyer_password')
 
-            buyer = Buyer.query.filter(Buyer.buyer_email == email).first()
+            try:
+                buyer = Buyer.query.filter_by(buyer_email=email).first()
+            except Exception as e:
+                print(f"Error in query: {e}")
 
-            if buyer:
-                if buyer.authenticate(password):
-                    user_id = f"buyer_{buyer.id}"
-                    user = load_user(user_id)
-                    login_user(user, remember=True)
-                    return buyer.to_dict(), 200
-                if not buyer:
-                    return {'error': '404: User not found'}, 404
+            if buyer and buyer.authenticate(password):
+                token = jwt.encode({
+                    'sub': buyer.buyer_email,
+                    'iat': datetime.utcnow(),
+                    'exp': datetime.utcnow() + timedelta(minutes=30)
+                }, app.config['JWT_SECRET'])
+                return {'token': token}, 200
+            else:
+                return {'error': 'incorrect password'}, 401
+
         except Exception as e:
-            return {'error': {e}}, 401
-
+            return {'error': str(e)}, 500
 
 api.add_resource(BuyerLogin, '/buyer_login')
 
-
-@app.route('/buyer_logout', methods=["POST"])
-@login_required
-def buyer_logout():
-    logout_user()
-    return 'you logged out'
-
-
 ## END ############## LOGIN / USER ################
-
 
 ################ BUSINESS ################
 
 # GET /businesses
 # note: ROUTE classes MUST be called DIFFERENT than MODEL class
 class Businesses(Resource):
-    # NO MAX RECURSION
-    # FULLY FUNCTIONAL
+
     def get(self):
-        # 1 query
+
         bs = Business.query.all()
         if not bs:
             return {"error": "Business not found."}, 404
-        # 2 dict aka res into JSON obj
+
         b_dict = [b.to_dict(
             only=(
                 "business_name",
@@ -341,7 +332,7 @@ class Businesses(Resource):
                 "business_category",
             )
         ) for b in bs]
-        # 3 res
+
         res = make_response(
             b_dict,
             200
@@ -350,9 +341,9 @@ class Businesses(Resource):
 
 # POST /businesses
     def post(self):
-        # 1 set data as JSON
+
         data = request.get_json()
-        # 2 create instance
+
         new_bis = Business(
             business_name=data.get('business_name'),
             business_address=data.get('business_address'),
@@ -360,34 +351,27 @@ class Businesses(Resource):
             business_banner_img=data.get('business_banner_img'),
             business_desc=data.get('business_desc')
         )
-        # 3 add/commit to database
+
         db.session.add(new_bis)
         db.session.commit()
 
-        # 4 dict aka res into JSON obj
         new_bis_dict = new_bis.to_dict()
 
-        # 5 res
         res = make_response(
             new_bis_dict,
             201
         )
-        # 6 return res
         return res
-
-
-# add route
+    
 api.add_resource(Businesses, "/businesses")
 
 
 # GET /businesses/<int:id>
 class BusinessById(Resource):
     def get(self, id):
-        # 1 query
         one_bs = Business.query.filter_by(id=id).first()
         if not one_bs:
             return {"error": "Business not found."}, 404
-        # 2 dict aka res into JSON obj
         one_bs_dict = one_bs.to_dict()
         res = make_response(
             one_bs_dict,
@@ -398,41 +382,33 @@ class BusinessById(Resource):
 # PATCH /businesses/<int:id>
 
     def patch(self, id):
-        # 1 query by id
+
         bis = Business.query.filter_by(id=id).first()
 
-        # 2 get data from request in JSON format
         data = request.get_json()
 
-        # 3 update values in the model
         for attr in data:
             setattr(bis, attr, data.get(attr))
 
-        # 4 update the database
         db.session.add(bis)
         db.session.commit()
 
-        # 5 return res
         return make_response(bis.to_dict(), 200)
 
 # DELETE /businesses/<int:id>
     def delete(self, id):
-        # 1 get by id
         one_bs = Business.query.filter_by(id=id).first()
         if not one_bs:
             return {"error": "Business not found."}, 404
-        # 2 delete from database
+
         db.session.delete(one_bs)
         db.session.commit()
 
         return make_response({}, 204)
 
-
-# add route
 api.add_resource(BusinessById, "/businesses/<int:id>")
 
 ###### BUSINESSBYSTATE #####
-
 
 class BusinessByState(Resource):
     def get(self, business_state):
@@ -442,20 +418,18 @@ class BusinessByState(Resource):
             404
         return [business.to_dict() for business in state]
 
-
 api.add_resource(BusinessByState, '/BusinessByState/<business_state>')
 
 # GET /business_by_category
 
-
 class BusinessByCategory(Resource):
 
     def get(self, category):
-        # 1 query
         bs = Business.query.filter_by(bis_category_id=category).all()
+
         if not bs:
             return {"error": "Business not found."}, 404
-        # 2 dict aka res into JSON obj
+        
         b_dict = [b.to_dict(
             only=(
                 "business_name",
@@ -465,13 +439,12 @@ class BusinessByCategory(Resource):
                 "business_category",
             )
         ) for b in bs]
-        # 3 res
+
         res = make_response(
             b_dict,
             200
         )
         return res
-
 
 api.add_resource(BusinessByCategory, "/business_by_category/<int:category>")
 
@@ -479,52 +452,23 @@ api.add_resource(BusinessByCategory, "/business_by_category/<int:category>")
 
 # GET /business_categories
 
-
 class BusinessCategories(Resource):
-    # NO MAX RECURSION
-    # FULLY FUNCTIONAL
+
     def get(self):
-        # 1 query
+
         bcs = BusinessCategory.query.all()
         if not bcs:
             return {"error": "Business not found."}, 404
-        # 2 turn to JSON w dict
+
         bcs_dict = [bc.to_dict() for bc in bcs]
-        # 3 res
+
         res = make_response(
             bcs_dict,
             200
         )
         return res
 
-# NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
-# AVAILABLE FOR TESTING PURPOSES
-# POST /business_categories
-    # def post(self):
-    #     # 1 set data as JSON
-    #     data = request.get_json()
-    #     # 2 create instance
-    #     new_bis_cat = BusinessCategory(
-    #         category_name=data.get('category_name')
-    #     )
-    #     # 3 add to db
-    #     db.session.add(new_bis_cat)
-    #     db.session.commit()
-
-    #     # 4 dict aka res into JSON obj
-    #     new_bis_cat_dict = new_bis_cat.to_dict()
-
-    #     # 5 res to JSON obj
-    #     res = make_response(
-    #         new_bis_cat_dict,
-    #         201
-    #     )
-    #     return res
-
-
-# add route
 api.add_resource(BusinessCategories, "/business_categories")
-
 
 # GET /business_categories/<int:id>
 class BusinessCategoryById(Resource):
@@ -539,31 +483,6 @@ class BusinessCategoryById(Resource):
         )
         return res
 
-# PATCH /business_categories/<int:id>
-# NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
-# AVAILABLE FOR TESTING PURPOSES
-    # def patch(self, id):
-    #     # 1 query by id
-    #     bc = BusinessCategory.query.filter_by(id=id).first()
-
-    #     # 2 get data from request in JSON format
-    #     data = request.get_json()
-
-    #     # 3 update values in the model
-    #     for attr in data:
-    #         setattr(bc, attr, data.get(attr))
-
-    #     # 4 update the database
-    #     db.session.add(bc)
-    #     db.session.commit()
-
-    #     # 5 return res
-    #     return make_response(bc.to_dict(), 200)
-
-
-# DELETE /business_categories/<int:id>
-
-
     def delete(self, id):
         # 1 get by id
         one_bc = BusinessCategory.query.filter_by(id=id).first()
@@ -575,9 +494,7 @@ class BusinessCategoryById(Resource):
 
         return make_response({}, 204)
 
-
 api.add_resource(BusinessCategoryById, "/business_categories/<int:id>")
-
 
 ################ PRODUCTS ################
 
@@ -586,10 +503,10 @@ class Products(Resource):
     def get(self):
         products = [product.to_dict(
             only=(
-                # "product_name",
-                # "product_description",
+                "product_name",
+                "product_description",
                 "product_img",
-                # "product_price",
+                "product_price",
             )
         ) for product in Product.query.all()]
         response = make_response(
@@ -597,8 +514,8 @@ class Products(Resource):
             200
         )
         return response
+    
 # POST
-
     def post(self):
         try:
             data = request.get_json()
@@ -621,19 +538,15 @@ class Products(Resource):
         )
         return response
 
-
 api.add_resource(Products, '/products')
 
 ################ PRODUCTSBYID ################
-# GET
-
 
 class ProductsByID(Resource):
     def get(self, id):
         product = Product.query.filter_by(id=id).first()
         if not product:
-            {"error": "Product not found"},
-            404
+            {"error": "Product not found"}, 404
         product_dict = product.to_dict()
         response = make_response(
             product_dict,
@@ -644,9 +557,7 @@ class ProductsByID(Resource):
     def patch(self, id):
         product = Product.query.filter_by(id=id).first()
         if not product:
-            return make_response({'error': 'product not found'},
-                                 404
-                                 )
+            return make_response({'error': 'product not found'},404)
         data = request.get_json()
         for attr in data:
             setattr(product, attr, data[attr])
@@ -669,16 +580,13 @@ class ProductsByID(Resource):
 
 api.add_resource(ProductsByID, '/product/<int:id>')
 
-# GET /products_by_bis/<int:business>
-
-
 class ProductsByBis(Resource):
     def get(self, business):
         products = [product.to_dict(
             only=(
                 "product_name",
-                # "product_description",
-                # "product_img",
+                "product_description",
+                "product_img",
                 "product_price",
             )
         ) for product in Product.query.filter_by(business_id=business).all()]
@@ -688,19 +596,15 @@ class ProductsByBis(Resource):
         )
         return response
 
-
 api.add_resource(ProductsByBis, "/products_by_bis/<int:business>")
-
-# GET /products_by_bis/<int:business>
-
 
 class ProductsByCat(Resource):
     def get(self, category):
         products = [product.to_dict(
             only=(
                 "product_name",
-                # "product_description",
-                # "product_img",
+                "product_description",
+                "product_img",
                 "product_price",
             )
         ) for product in Product.query.filter_by(product_category_id=category).all()]
@@ -710,25 +614,19 @@ class ProductsByCat(Resource):
         )
         return response
 
-
 api.add_resource(ProductsByCat, "/products_by_cat/<int:category>")
 
 
 ######### ATTRIBUTES ################
-# GET /attributes
-
 
 class Attributes(Resource):
     def get(self):
-        # 1 query
         ats = Attribute.query.all()
         if not ats:
             return {"error": "Business not found."}, 404
-        # 2 dict aka res into JSON obj
         ats_dict = [at.to_dict(
             only=("attribute_name", "product_id", "id",)
         ) for at in ats]
-        # 3 res
         res = make_response(
             ats_dict,
             200
@@ -737,41 +635,29 @@ class Attributes(Resource):
 
 # POST /attributes
     def post(self):
-        # 1 set data as JSON
         data = request.get_json()
-        # 2 create instance
         new_at = Attribute(
             attribute_name=data.get('attribute_name')
         )
-        # 3 add/commit to database
         db.session.add(new_at)
         db.session.commit()
-
-        # 4 dict aka res into JSON obj
         new_at_dict = new_at.to_dict()
 
-        # 5 res
         res = make_response(
             new_at_dict,
             201
         )
-        # 6 return res
+
         return res
 
-
-# add route
 api.add_resource(Attributes, "/attributes")
-
-# GET /attributes/<int:id>
-
 
 class AttributeById(Resource):
     def get(self, id):
-        # 1 query
         one_at = Attribute.query.filter_by(id=id).first()
         if not one_at:
             return {"error": "Attribute not found."}, 404
-        # 2 dict aka res into JSON obj
+
         one_at_dict = one_at.to_dict(
             only=("attribute_name", "product_id", "id",)
         )
@@ -781,115 +667,49 @@ class AttributeById(Resource):
         )
         return res
 
-# DELETE /attributes/<int:id>
     def delete(self, id):
-        # 1 get by id
         one_at = Attribute.query.filter_by(id=id).first()
         if not one_at:
             return {"error": "Attribute not found."}, 404
-        # 2 delete from database
+
         db.session.delete(one_at)
         db.session.commit()
 
         return make_response({}, 204)
 
-
-# add route
 api.add_resource(AttributeById, "/attributes/<int:id>")
 
 ################ PRODUCT CATEGORIES ################
 
 # GET /product_categories
-
-
 class ProductCategories(Resource):
-    # NO MAX RECURSION
-    # FULLY FUNCTIONAL
     def get(self):
-        # 1 query
         pcs = ProductCategory.query.all()
         if not pcs:
             return {"error": "Product Category not found."}, 404
-        # 2 dict
         pcs_dict = [pc.to_dict() for pc in pcs]
-        # 3 res
         res = make_response(
             pcs_dict,
             200
         )
         return res
 
-
-# POST /product_categories
-# NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
-# AVAILABLE FOR TESTING PURPOSES
-    # def post(self):
-    #     # 1 set data as JSON
-    #     data = request.get_json()
-    #     # 2 create instance
-    #     new_product = ProductCategory(
-    #         category_name=data.get('category_name')
-    #     )
-    #     # add/commit to db
-    #     db.session.add(new_product)
-    #     db.session.commit()
-
-    #     # 4 dict aka res into JSON obj
-    #     new_product_dict = new_product.to_dict()
-
-    #     # 5 res
-    #     res = make_response(
-    #         new_product_dict,
-    #         201
-    #     )
-    #     # 6 return res
-    #     return res
-
-
 api.add_resource(ProductCategories, "/product_categories")
-
-# GET /product_categories/<int:id>
-
 
 class ProductCategoryById(Resource):
     def get(self, id):
-        # 1 query
+
         one_pc = ProductCategory.query.filter_by(id=id).first()
         if not one_pc:
             return {"error": "Product Category not found."}, 404
-        # 2 dict
+
         one_pc_dict = one_pc.to_dict()
-        # res
+
         res = make_response(
             one_pc_dict,
             200
         )
         return res
-
-# DO WE NEED PATCH FOR THIS MODEL??
-# PATCH /product_categories/<int:id>
-    # def patch(self, id):
-    #     #1 query
-    #     #2 data to JSON
-    #     #3 edit
-    #     #add/commit to db
-    #     #return res
-
-
-# DELETE /product_categories/<int:id>
-# NOT NEEDED; NO USER NEEDS TO POST; ONLY DEVS
-# AVAILABLE FOR TESTING PURPOSES
-    # def delete(self, id):
-    #     # 1 query
-    #     pc = ProductCategory.query.filter_by(id=id).first()
-    #     if not pc:
-    #         return {'error': "Product Category not found."}, 404
-    #     # delete/commit from/to db
-    #     db.session.delete(pc)
-    #     db.session.commit()
-    #     # return res
-    #     return make_response({}, 204)
-
 
 api.add_resource(ProductCategoryById, "/product_categories/<int:id>")
 
@@ -971,8 +791,6 @@ class Reviews(Resource):
 api.add_resource(Reviews, '/review/<product_id>')
 
 # Buyer specific reviews
-
-
 class BuyerReview(Resource):
     @login_required
     def patch(self, review_id):
@@ -1029,55 +847,6 @@ api.add_resource(BuyerReview, '/buyer/reviews/<review_id>')
 
 
 ################ SALE HISTORY ################
-# GET - doing by User since this should be applicable for both sellers and buyers
-# class SaleHistoryByUser(Resource):
-#     def get(self):
-#         current_user = User.get_current_user()
-#         if not current_user:
-#                 {"error": "Unauthorized Access"},
-#                 404
-
-#         sale_histories = SaleHistory.query.join(
-#             "order"
-#         ).join(
-#             "business"
-#         ).filter(Order.user_id == current_user.id).all()
-
-#         if not sale_histories:
-#             {"error": "No sale history found for this user"},
-#             404
-
-#         response = make_response("Sale history retrieved successfully", 200)
-#         return response
-#     def patch(self, order_id):
-#         current_user = User.get_current_user()
-#         if not current_user:
-#                 {"error": "User not found"},
-#                 404
-
-#         order = Order.query.filter_by(id=order_id).first()
-#         if not order:
-#                 {"error": "Order not found"},
-#                 404
-#         new_status_id = request.json.get("status_id")
-#         if not new_status_id:
-#                 "Missing status_id in request data",
-#                 404
-
-#         try:
-#             new_status = Order_Status.query.get(new_status_id)
-#             if not new_status:
-#                 {"error": "Invalid ID"},
-#                 404
-
-#             order.status = new_status
-#             db.session.commit()
-
-#             response = make_response("Order status updated successfully", 200)
-#         return response
-
-# api.add_resource(SaleHistoryByUser, '/salehistorybyuser/<int:id>')
-
 
 ################ ORDERS ################
 
@@ -1100,7 +869,6 @@ class OrderByBuyer(Resource):
 api.add_resource(OrderByBuyer, "/orders_by_buyer")
 
 # GET /buyers_specific_orders
-
 
 class BuyersSpecificOrder(Resource):
     def get(self, order_id):
@@ -1134,9 +902,6 @@ class BuyersSpecificOrder(Resource):
 api.add_resource(BuyersSpecificOrder, "/buyers_specific_orders/<int:order>")
 
 ################ ORDER ITEMS ################
-# GET
-# FULLY FUNCTIONAL
-
 
 class OrderItems(Resource):
     def get(self):
@@ -1148,33 +913,13 @@ class OrderItems(Resource):
         )
         return response
 
-
 api.add_resource(OrderItems, '/orderitems')
 
 ################ ORDER STATUS ################
-# GET
-
 
 ################ SHOPIFY INFO ################
-# GET
-
-
-class ShopifyInfo(Resource):
-    def get(self):
-        shopifyInfo = [shopifyInfos.to_dict()
-                       for shopifyInfos in ShopifyInfo.query.all()]
-        response = make_response(
-            shopifyInfo,
-            200
-        )
-        return response
-
-
-api.add_resource(ShopifyInfo, '/shopifyinfo')
 
 ################ PAYMENT ################
-# GET
-
 
 class Payment(Resource):
     def get(self):
@@ -1185,49 +930,46 @@ class Payment(Resource):
         )
         return response
 
-
 api.add_resource(Payment, '/payment')
 
 ################ MESSAGING ################
 
+# class BuyerConversations(Resource):
+#     def get(self):
+#         buyer_id = current_user.id
 
-class BuyerConversations(Resource):
-    def get(self):
-        buyer_id = current_user.id
+#         convos = MessageRecipient(buyer_id=buyer_id).all()
 
-        convos = MessageRecipient(buyer_id=buyer_id).all()
+#         return convos.to_dict(), 200
 
-        return convos.to_dict(), 200
-
-
-class BuyerMessages(Resource):
+# class BuyerMessages(Resource):
     # Message Model
     # content, read_by_buyer, read_by_seller, attachments, seller_id, buyer_id, rel=recipients
 
     # MessageRecipient Model
     # message_id, user_type, buyer_id, seller_id, rel=message
-    @login_required
-    def get(self, business_id):
-        try:
-            buyer_id = current_user.id
-            business = Business.query.get(business_id).first()
-            if not business:
-                return {'Error': 'Business not found'}, 404
-            seller_id = business.seller_id
+#     @login_required
+#     def get(self, business_id):
+#         try:
+#             buyer_id = current_user.id
+#             business = Business.query.get(business_id).first()
+#             if not business:
+#                 return {'Error': 'Business not found'}, 404
+#             seller_id = business.seller_id
 
-            messages = [message.to_dict() for message in Message.query.filter((Message.seller_id == seller_id) and (
-                Message.buyer_id == buyer_id)).order_by(Message.created_at.asc()).all()]
+#             messages = [message.to_dict() for message in Message.query.filter((Message.seller_id == seller_id) and (
+#                 Message.buyer_id == buyer_id)).order_by(Message.created_at.asc()).all()]
 
-            return messages, 200
+#             return messages, 200
 
-        except Exception as e:
-            return {'Error': 'Error while processing', 'Message': {e}}, 500
-
-
-api.add_resource(BuyerMessages, '/buyer_messages/<int:business_id>')
+#         except Exception as e:
+#             return {'Error': 'Error while processing', 'Message': {e}}, 500
 
 
-class SellerMessages(Resource):
+# api.add_resource(BuyerMessages, '/buyer_messages/<int:business_id>')
+
+
+# class SellerMessages(Resource):
     # Message Model
     # content, read_by_buyer, read_by_seller, attachments, seller_id, buyer_id, rel=recipients
 
@@ -1235,36 +977,32 @@ class SellerMessages(Resource):
     # message_id, user_type, buyer_id, seller_id, rel=message
 
     # Might Change
-    @login_required
-    def get(self, order_id):
-        try:
-            seller_id = current_user.id
-            order = Order.query.get(order_id).first()
-            if not order:
-                return {'Error': 'Order not found'}, 404
-            buyer_id = order.buyer_id
+    # @login_required
+    # def get(self, order_id):
+    #     try:
+    #         seller_id = current_user.id
+    #         order = Order.query.get(order_id).first()
+    #         if not order:
+    #             return {'Error': 'Order not found'}, 404
+    #         buyer_id = order.buyer_id
 
-            messages = [message.to_dict() for message in Message.query.filter((Message.seller_id == seller_id) and (
-                Message.buyer_id == buyer_id)).order_by(Message.created_at.asc()).all()]
+    #         messages = [message.to_dict() for message in Message.query.filter((Message.seller_id == seller_id) and (
+    #             Message.buyer_id == buyer_id)).order_by(Message.created_at.asc()).all()]
 
-            return messages, 200
+    #         return messages, 200
 
-        except Exception as e:
-            return {'Error': 'Error while processing', 'Message': {e}}, 500
+    #     except Exception as e:
+    #         return {'Error': 'Error while processing', 'Message': {e}}, 500
 
 
-api.add_resource(SellerMessages, '/seller_messages/<int:business_id>')
+# api.add_resource(SellerMessages, '/seller_messages/<int:business_id>')
 
 ################ ORDER HISTORY ################
-# list of all
-# see one
-#
+
 
 
 ################ ADDRESS ################
 
-# GET /addresses
-# FUNCTIONALLY COMPLETE
 class Addresses(Resource):
     @login_required
     def get(self):
@@ -1322,11 +1060,8 @@ class Addresses(Resource):
 api.add_resource(Addresses, "/addresses")
 
 # GET /addresses/<int:id>
-
-
 class AddressById(Resource):
 
-    # PATCH /addresses/<int:id>
     @login_required
     def patch(self, address_id):
         try:
@@ -1363,11 +1098,9 @@ class AddressById(Resource):
 
             return {}, 204
         except Exception as e:
-            return {'Error': 'An error occured while deleting the address'}, 500
-
+            return {'Error': 'An error occured while deleting the address', 'Message': {e}}, 500
 
 api.add_resource(AddressById, "/addresses/<int:id>")
-
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
